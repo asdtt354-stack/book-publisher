@@ -221,12 +221,24 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 .spread-page{flex-shrink:0;background:#fff;box-shadow:var(--shd)}
 .spread-spine{flex-shrink:0;background:#2c3e50}
 
+/* ── Publish Guide Modal ── */
+.pub-step{display:flex;gap:14px;padding:14px 16px;background:rgba(255,255,255,.04);border-radius:6px;border:1px solid #2a2a4a;margin-bottom:10px}
+.pub-step-num{width:28px;height:28px;border-radius:50%;background:var(--acc);color:#fff;display:flex;align-items:center;justify-content:center;font-weight:bold;font-size:13px;flex-shrink:0;margin-top:1px}
+.pub-step-body{flex:1}
+.pub-step-title{font-size:13px;font-weight:bold;color:#eaeaea;margin-bottom:5px}
+.pub-step-desc{font-size:11px;color:#aaa;line-height:1.75}
+.pub-step-badge{display:inline-block;font-size:9px;padding:1px 7px;border-radius:10px;background:#1a3520;color:#6acc8a;border:1px solid #2a5a30;margin-left:6px;vertical-align:middle;font-weight:normal}
+.pub-step-link{display:inline-flex;align-items:center;gap:4px;margin-top:7px;font-size:11px;color:var(--acc);text-decoration:none;border:1px solid var(--acc);padding:3px 10px;border-radius:3px;transition:.15s}
+.pub-step-link:hover{background:var(--acc);color:#fff}
+
 /* ── Print / Export ── */
 @media print{
   body>*:not(#print-wrap){display:none!important}
   #print-wrap{display:block!important}
   @page{margin:0}
   .print-pg{page-break-after:always;position:relative}
+  .pg-sec-badge,.page-label{display:none!important}
+  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
 }
 </style>
 </head>
@@ -295,6 +307,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   </div>
   <div class="tg">
     <button class="tb" onclick="exportPDF()">PDF 출력</button>
+    <button class="tb" onclick="openModal('modal-publish-guide')">출판 안내</button>
     <button class="tb on" onclick="toggleAI()">AI ✦</button>
   </div>
 </div>
@@ -654,6 +667,75 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <textarea id="ai-inp" placeholder="AI에게 질문하거나 교정할 텍스트를 입력하세요..." rows="3"></textarea>
     <div class="ai-send-row">
       <button class="btn-p" onclick="sendAI()" style="flex:1">전송 ↵</button>
+    </div>
+  </div>
+</div>
+
+<!-- Modal: 출판 안내 -->
+<div class="modal" id="modal-publish-guide">
+  <div class="mbox" style="max-width:520px">
+    <div class="mtitle">📚 출판 안내 — ISBN 발급 가이드</div>
+    <button class="mclose" onclick="closeModal('modal-publish-guide')">✕</button>
+    <p style="font-size:12px;color:#999;margin-bottom:16px;line-height:1.75">국내에서 책을 출판하려면 출판사 등록과 ISBN 발급이 필요합니다.<br>아래 4단계를 순서대로 진행하세요. 모두 <strong style="color:#6acc8a">무료</strong>입니다.</p>
+
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">출판사 등록 <span class="pub-step-badge">무료</span></div>
+        <div class="pub-step-desc">
+          사업장 관할 <strong style="color:#eaeaea">구청 또는 군청</strong>에 방문하여 출판사 신고를 합니다.<br>
+          필요 서류: 신분증, 출판사명·주소·대표자 정보<br>
+          처리 기간: 즉시 ~ 2~3일 이내 (지역마다 상이)
+        </div>
+      </div>
+    </div>
+
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">국립중앙도서관 ISBN센터 회원가입</div>
+        <div class="pub-step-desc">
+          출판사 등록 완료 후 ISBN센터에서 <strong style="color:#eaeaea">출판사 회원</strong>으로 가입합니다.<br>
+          출판사 신고 확인증(또는 사업자등록증) 스캔본 업로드 필요
+        </div>
+        <a class="pub-step-link" href="https://isbn.nl.go.kr" target="_blank">🔗 isbn.nl.go.kr 바로가기</a>
+      </div>
+    </div>
+
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">ISBN 신청 <span class="pub-step-badge">무료</span></div>
+        <div class="pub-step-desc">
+          로그인 후 <strong style="color:#eaeaea">[자료 신청 → 단행본 ISBN 신청]</strong> 메뉴에서 신청합니다.<br>
+          입력 항목: 책 제목, 저자명, 출판사, 출판 예정일, 도서 분야, 판형 등<br>
+          발급 기간: 신청 즉시 자동 발급 — 13자리 숫자 ISBN 부여
+        </div>
+      </div>
+    </div>
+
+    <div class="pub-step">
+      <div class="pub-step-num">4</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">바코드 생성 및 뒤표지 삽입</div>
+        <div class="pub-step-desc">
+          발급된 ISBN으로 <strong style="color:#eaeaea">EAN-13 바코드</strong>를 생성하여 뒤표지에 삽입합니다.<br>
+          바코드 형식 예시: <code style="background:#1a1a30;padding:1px 6px;border-radius:3px;font-size:10px;color:#7acc7a">978-89-XXXXX-XX-X</code><br>
+          무료 생성 사이트: barcode.tec-it.com 또는 온라인 EAN-13 생성기 검색
+        </div>
+      </div>
+    </div>
+
+    <div style="background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.25);border-radius:6px;padding:12px 16px;margin-top:14px">
+      <div style="font-size:11px;font-weight:bold;color:var(--acc);margin-bottom:5px">💡 출판 후 납본 의무 (저작권법)</div>
+      <div style="font-size:11px;color:#aaa;line-height:1.75">
+        출판일로부터 <strong style="color:#eaeaea">30일 이내</strong>에 국립중앙도서관과 국회도서관에 각 2부씩 납본해야 합니다.<br>
+        ISBN센터 사이트에서 <strong style="color:#eaeaea">전자납본</strong>도 가능합니다.
+      </div>
+    </div>
+
+    <div class="btnrow" style="margin-top:18px">
+      <button class="btn-s" onclick="closeModal('modal-publish-guide')">닫기</button>
     </div>
   </div>
 </div>
@@ -2200,6 +2282,10 @@ function exportPDF(){
       const inner=makeCoverEl(i).cloneNode(true);
       inner.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
       div.appendChild(inner);
+    } else if(pg.type==='backcover'){
+      const bc=makeBackCoverEl(i).cloneNode(true);
+      bc.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
+      div.appendChild(bc);
     } else if(pg.type==='endpaper'){
       const ep=makeEndpaperEl(i).cloneNode(true);
       ep.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
@@ -2207,8 +2293,8 @@ function exportPDF(){
     } else {
       const cp=makeContentEl(pg,i).cloneNode(true);
       cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
-      // Make content non-editable in print
       cp.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
+      cp.querySelectorAll('.pg-sec-badge,.page-label').forEach(e=>e.remove());
       div.appendChild(cp);
     }
 
@@ -2233,7 +2319,7 @@ function exportPDF(){
   // Add @page print CSS
   let style=document.getElementById('print-style');
   if(!style){ style=document.createElement('style'); style.id='print-style'; document.head.appendChild(style); }
-  style.textContent=`@media print{@page{size:${pw}mm ${ph}mm;margin:0}}`;
+  style.textContent=`@media print{@page{size:${pw}mm ${ph}mm;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
 
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pw2.style.display='none'; pw2.innerHTML=''; }, 500); }, 300);
   notify('인쇄 창을 열었습니다. PDF로 저장하려면 "PDF로 저장"을 선택하세요.');
