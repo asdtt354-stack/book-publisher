@@ -816,12 +816,12 @@ function makeCoverEl(i){
   const el=document.createElement('div');
   el.className='book-cover book-page';
   el.dataset.pgi=i;
-  el.style.cssText=`width:${mm(w)};height:${mm(h)};cursor:pointer;background:${cv.bgColor}`;
+  const bgCss=cv.bgImage
+    ?`background-color:${cv.bgColor};background-image:url("${cv.bgImage}");background-size:cover;background-position:center`
+    :`background-color:${cv.bgColor}`;
+  el.style.cssText=`width:${mm(w)};height:${mm(h)};cursor:pointer;${bgCss}`;
 
   if(cv.bgImage){
-    const bg=document.createElement('img');
-    bg.className='cover-bg'; bg.src=cv.bgImage;
-    el.appendChild(bg);
     const ov=document.createElement('div');
     ov.className='cover-overlay';
     el.appendChild(ov);
@@ -1002,13 +1002,13 @@ function makeBackCoverEl(i){
   const el=document.createElement('div');
   el.className='book-backcover book-page';
   el.dataset.pgi=i;
-  el.style.cssText=`width:${mm(w)};height:${mm(h)};background:${bc.bgColor};color:${bc.textColor}`;
+  const bcBgCss=bc.bgImage
+    ?`background-color:${bc.bgColor};background-image:url("${bc.bgImage}");background-size:cover;background-position:center`
+    :`background-color:${bc.bgColor}`;
+  el.style.cssText=`width:${mm(w)};height:${mm(h)};${bcBgCss};color:${bc.textColor}`;
   el.addEventListener('click',()=>{ selectPage(i); openModal('modal-backcover'); });
 
   if(bc.bgImage){
-    const bg=document.createElement('img');
-    bg.className='bc-bg'; bg.src=bc.bgImage;
-    el.appendChild(bg);
     const ov=document.createElement('div');
     ov.className='bc-overlay';
     el.appendChild(ov);
@@ -1677,56 +1677,58 @@ function applyCover(){
   closeModal('modal-cover');
   notify('표지 적용 완료');
 }
+function getBookBodyText(maxChars=3000){
+  const texts=S.pages
+    .filter(p=>p.type==='content'&&p.content)
+    .map(p=>{ const d=document.createElement('div'); d.innerHTML=p.content; return d.textContent.trim(); })
+    .filter(t=>t.length>0);
+  return texts.join('\n').substring(0,maxChars);
+}
+async function geminiText(key,prompt){
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}]})
+  });
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  return d.candidates?.[0]?.content?.parts?.[0]?.text?.trim()||'';
+}
+async function geminiImage(key,prompt){
+  const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${key}`,{
+    method:'POST',headers:{'Content-Type':'application/json'},
+    body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['TEXT','IMAGE']}})
+  });
+  const d=await r.json();
+  if(d.error) throw new Error(d.error.message);
+  const imgPart=(d.candidates?.[0]?.content?.parts||[]).find(p=>p.inlineData);
+  if(!imgPart) throw new Error('이미지를 생성하지 못했습니다. 다시 시도해 주세요.');
+  return `data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+}
 async function genAICoverImage(){
   const key=S.aiKey||(document.getElementById('ai-key-inp')?document.getElementById('ai-key-inp').value.trim():'');
   const btn=document.getElementById('cv-ai-btn');
   const status=document.getElementById('cv-ai-status');
-  if(!key){
-    status.style.color='#e94560';
-    status.textContent='AI 패널에서 Gemini API 키를 먼저 저장해주세요.';
-    return;
-  }
+  if(!key){ status.style.color='#e94560'; status.textContent='AI 패널에서 Gemini API 키를 먼저 저장해주세요.'; return; }
   const title=document.getElementById('cv-title').value||'책 제목';
   const sub=document.getElementById('cv-sub').value||'';
-  btn.disabled=true;
-  btn.innerHTML='<span class="spinner"></span> 생성 중…';
-  status.style.color='#7acc7a';
-  status.textContent='';
-  const prompt=`Create a beautiful artistic book cover background image for a book titled "${title}"${sub?` with subtitle "${sub}"`:''}. Painterly, professional composition, rich colors, no text, portrait orientation.`;
+  const bodyText=getBookBodyText(3000);
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 생성 중…';
+  status.style.color='#7acc7a'; status.textContent='';
   try{
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${key}`,{
-      method:'POST',
-      headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({
-        contents:[{parts:[{text:prompt}]}],
-        generationConfig:{responseModalities:['TEXT','IMAGE']}
-      })
-    });
-    const data=await resp.json();
-    if(data.error){
-      status.style.color='#e94560';
-      status.textContent='오류: '+data.error.message;
-    } else {
-      const parts=data.candidates?.[0]?.content?.parts||[];
-      const imgPart=parts.find(p=>p.inlineData);
-      if(imgPart){
-        const dataUrl=`data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-        coverImageData=dataUrl;
-        setCoverPreviewImage(dataUrl);
-        document.getElementById('cv-dz').textContent='AI 생성 이미지 적용됨 ✦';
-        status.style.color='#7acc7a';
-        status.textContent='✓ 이미지 생성 완료! 표지 적용 버튼을 눌러 반영하세요.';
-      } else {
-        status.style.color='#e94560';
-        status.textContent='이미지를 생성하지 못했습니다. 다시 시도해 주세요.';
-      }
-    }
+    status.textContent='1단계: 본문 분석 중…';
+    const imgPrompt=await geminiText(key,
+      `You are a professional book cover designer. Analyze the book below and write ONE English image generation prompt for the front cover background.\n\nTitle: ${title}\nSubtitle: ${sub||'(none)'}\nContent excerpt:\n${bodyText||'(none)'}\n\nRules: output ONLY the prompt, no explanations. Style must be painterly artistic, rich colors, no text, no letters, portrait orientation, highly detailed.`
+    );
+    status.textContent='2단계: 이미지 생성 중…';
+    const dataUrl=await geminiImage(key, imgPrompt||`Artistic book cover background for "${title}", painterly, rich colors, no text, portrait`);
+    coverImageData=dataUrl;
+    setCoverPreviewImage(dataUrl);
+    document.getElementById('cv-dz').textContent='AI 생성 이미지 적용됨 ✦';
+    status.textContent='✓ 완료! 표지 적용 버튼을 눌러 반영하세요.';
   } catch(err){
-    status.style.color='#e94560';
-    status.textContent='네트워크 오류: '+err.message;
+    status.style.color='#e94560'; status.textContent='오류: '+err.message;
   } finally{
-    btn.disabled=false;
-    btn.innerHTML='✦ Gemini AI로 표지 이미지 생성';
+    btn.disabled=false; btn.innerHTML='✦ Gemini AI로 표지 이미지 생성';
   }
 }
 // ── Back cover image helpers ───────────────────────
@@ -1763,30 +1765,23 @@ async function genAIBackCoverImage(){
   const btn=document.getElementById('bc-ai-btn');
   const status=document.getElementById('bc-ai-status');
   if(!key){ status.style.color='#e94560'; status.textContent='AI 패널에서 Gemini API 키를 먼저 저장해주세요.'; return; }
-  const title=S.cover.title||document.getElementById('cv-title').value||'책';
+  const title=S.cover.title||'책';
   const sub=S.cover.subtitle||'';
+  const bodyText=getBookBodyText(3000);
   btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 생성 중…';
   status.style.color='#7acc7a'; status.textContent='';
-  const prompt=`Create a moody, atmospheric background image for the back cover of a book titled "${title}"${sub?` with subtitle "${sub}"`:''}. Subtle, textured, dark and elegant. No text, no people, abstract or nature-based composition, portrait orientation.`;
   try{
-    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${key}`,{
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['TEXT','IMAGE']}})
-    });
-    const data=await resp.json();
-    if(data.error){ status.style.color='#e94560'; status.textContent='오류: '+data.error.message; }
-    else{
-      const parts=data.candidates?.[0]?.content?.parts||[];
-      const imgPart=parts.find(p=>p.inlineData);
-      if(imgPart){
-        const dataUrl=`data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
-        backCoverImageData=dataUrl;
-        setBackCoverPreviewImage(dataUrl);
-        document.getElementById('bc-dz').textContent='AI 생성 이미지 적용됨 ✦';
-        status.style.color='#7acc7a'; status.textContent='✓ 이미지 생성 완료! 뒤표지 적용 버튼을 눌러 반영하세요.';
-      } else { status.style.color='#e94560'; status.textContent='이미지를 생성하지 못했습니다. 다시 시도해 주세요.'; }
-    }
-  } catch(err){ status.style.color='#e94560'; status.textContent='네트워크 오류: '+err.message; }
+    status.textContent='1단계: 본문 분석 중…';
+    const imgPrompt=await geminiText(key,
+      `You are a professional book cover designer. Analyze the book below and write ONE English image generation prompt for the BACK COVER background.\n\nTitle: ${title}\nSubtitle: ${sub||'(none)'}\nContent excerpt:\n${bodyText||'(none)'}\n\nRules: output ONLY the prompt, no explanations. Style must be moody atmospheric dark elegant, subtle textures, no text, no people, abstract or nature-based composition, portrait orientation.`
+    );
+    status.textContent='2단계: 이미지 생성 중…';
+    const dataUrl=await geminiImage(key, imgPrompt||`Back cover background for "${title}", dark moody atmospheric, subtle texture, no text, portrait`);
+    backCoverImageData=dataUrl;
+    setBackCoverPreviewImage(dataUrl);
+    document.getElementById('bc-dz').textContent='AI 생성 이미지 적용됨 ✦';
+    status.textContent='✓ 완료! 뒤표지 적용 버튼을 눌러 반영하세요.';
+  } catch(err){ status.style.color='#e94560'; status.textContent='오류: '+err.message; }
   finally{ btn.disabled=false; btn.innerHTML='✦ Gemini AI로 뒤표지 이미지 생성'; }
 }
 function setupBackCoverDrag(){
