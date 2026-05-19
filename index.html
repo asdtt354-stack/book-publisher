@@ -382,6 +382,11 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
         <img id="cv-img-prev-el" style="max-width:100%;border-radius:4px;border:1px solid #333">
         <button class="btn-s" style="margin-top:6px;width:100%" onclick="removeCoverImage()">이미지 제거</button>
       </div>
+      <div class="fg">
+        <label>AI 표지 이미지 생성</label>
+        <button class="btn-p" id="cv-ai-btn" onclick="genAICoverImage()" style="width:100%;margin-bottom:5px;background:#4a3fa0;border-color:#4a3fa0">✦ Gemini AI로 표지 이미지 생성</button>
+        <div id="cv-ai-status" style="font-size:11px;color:#7acc7a;min-height:16px"></div>
+      </div>
     </div>
     <div>
       <div class="rp-ttl" style="margin-bottom:8px">미리보기</div>
@@ -751,8 +756,9 @@ function getPageLabel(pg,i){
   return `${i+1}p${numStr} (${i%2!==0?'홀':'짝'})`;
 }
 
-function pageEl(i){ return document.querySelector(`[data-pgi="${i}"]`); }
-function getPageDomEl(i){ return document.querySelector(`[data-pgi="${i}"] .book-page`); }
+function cvs(){ return document.getElementById('canvas'); }
+function pageEl(i){ return cvs().querySelector(`[data-pgi="${i}"]`); }
+function getPageDomEl(i){ return cvs().querySelector(`[data-pgi="${i}"] .book-page`); }
 
 // ── Cover element ──────────────────────────────────
 function makeCoverEl(i){
@@ -1021,9 +1027,10 @@ function applyBackCover(){
   };
   S.dirty=true;
   // Re-render backcover page(s)
+  const canvasEl=document.getElementById('canvas');
   S.pages.forEach((pg,i)=>{
     if(pg.type==='backcover'){
-      const wrap=document.querySelector(`[data-pgi="${i}"]`);
+      const wrap=canvasEl.querySelector(`[data-pgi="${i}"]`);
       if(wrap){
         const old=wrap.querySelector('.book-backcover');
         if(old) old.replaceWith(makeBackCoverEl(i));
@@ -1101,7 +1108,7 @@ function doInsertTable(){
   }
   html+='</tbody></table>';
 
-  const wrap=document.querySelector(`[data-pgi="${S.curPage}"]`);
+  const wrap=pageEl(S.curPage);
   const cont=wrap?wrap.querySelector('.pg-content'):null;
   if(!cont){ closeModal('modal-table'); return; }
   cont.focus();
@@ -1117,7 +1124,7 @@ function doInsertTable(){
 function onContentChange(i){
   const pg=S.pages[i];
   if(!pg||pg.type!=='content') return;
-  const wrap=document.querySelector(`[data-pgi="${i}"]`);
+  const wrap=pageEl(i);
   if(!wrap) return;
   const cont=wrap.querySelector('.pg-content');
   if(!cont) return;
@@ -1151,7 +1158,7 @@ function splitAndFlow(i, cont){
   }
 
   // Move last child to front of next page
-  const nextWrap=document.querySelector(`[data-pgi="${i+1}"]`);
+  const nextWrap=pageEl(i+1);
   const nextCont=nextWrap?nextWrap.querySelector('.pg-content'):null;
   if(!nextCont) return;
 
@@ -1181,13 +1188,13 @@ function splitTextNode(i, cont, el){
   S.pages[i].content=cont.innerHTML;
 
   ensureNextContentPage(i);
-  const nextWrap=document.querySelector(`[data-pgi="${i+1}"]`);
-  const nextCont=nextWrap?nextWrap.querySelector('.pg-content'):null;
-  if(nextCont){
+  const nextWrap2=pageEl(i+1);
+  const nextCont2=nextWrap2?nextWrap2.querySelector('.pg-content'):null;
+  if(nextCont2){
     const newEl=el.cloneNode(false);
     newEl.innerHTML=spill;
-    nextCont.insertBefore(newEl, nextCont.firstChild);
-    S.pages[i+1].content=nextCont.innerHTML;
+    nextCont2.insertBefore(newEl, nextCont2.firstChild);
+    S.pages[i+1].content=nextCont2.innerHTML;
   }
 }
 
@@ -1208,9 +1215,9 @@ function pullFromNext(i){
   const nextPg=S.pages[i+1];
   if(!nextPg||nextPg.type!=='content') return;
 
-  const wrap=document.querySelector(`[data-pgi="${i}"]`);
+  const wrap=pageEl(i);
   const cont=wrap?wrap.querySelector('.pg-content'):null;
-  const nextWrap=document.querySelector(`[data-pgi="${i+1}"]`);
+  const nextWrap=pageEl(i+1);
   const nextCont=nextWrap?nextWrap.querySelector('.pg-content'):null;
   if(!cont||!nextCont||!nextCont.firstChild) return;
 
@@ -1254,7 +1261,7 @@ function reRenderFrom(startIdx){
 // ── Thumbnail ──────────────────────────────────────
 function addThumb(pg, i){
   const box=document.createElement('div');
-  box.className='thumb'; box.dataset.pgi=i;
+  box.className='thumb'; box.dataset.thumbPgi=i;
   box.onclick=()=>selectPage(i,true);
   const inner=document.createElement('div');
   inner.className='thumb-inner';
@@ -1274,10 +1281,11 @@ function selectPage(i, scroll=true){
   document.querySelectorAll('.thumb').forEach(e=>e.classList.remove('on'));
   const pg=getPageDomEl(i);
   if(pg) pg.classList.add('selected');
-  const th=document.querySelector(`.thumb[data-pgi="${i}"]`);
+  const th=document.querySelector(`.thumb[data-thumb-pgi="${i}"]`);
   if(th) th.classList.add('on');
   if(scroll){
-    const wrap=document.querySelector(`[data-pgi="${i}"]`);
+    const canvasEl=document.getElementById('canvas');
+    const wrap=canvasEl.querySelector(`[data-pgi="${i}"]`);
     if(wrap) wrap.scrollIntoView({behavior:'smooth',block:'nearest'});
   }
   updatePageInfo(i);
@@ -1405,7 +1413,7 @@ function movePageDown(){
 
 // ── Insert heading ─────────────────────────────────
 function insertHeading(level){
-  const wrap=document.querySelector(`[data-pgi="${S.curPage}"]`);
+  const wrap=pageEl(S.curPage);
   const cont=wrap?wrap.querySelector('.pg-content'):null;
   if(!cont) return;
   cont.focus();
@@ -1427,7 +1435,7 @@ function onImageSelected(e){
   e.target.value='';
 }
 function insertImageData(src, i){
-  const wrap=document.querySelector(`[data-pgi="${i}"]`);
+  const wrap=pageEl(i);
   const cont=wrap?wrap.querySelector('.pg-content'):null;
   if(!cont) return;
   const fig=document.createElement('figure');
@@ -1475,7 +1483,7 @@ function onContentKeydown(e, i){
               const td=newRow.insertCell(); td.contentEditable='true';
             }
             newRow.cells[0].focus();
-            const wrap=document.querySelector(`[data-pgi="${i}"]`);
+            const wrap=pageEl(i);
             const cont=wrap?wrap.querySelector('.pg-content'):null;
             if(cont){ S.pages[i].content=cont.innerHTML; onContentChange(i); }
           }
@@ -1562,7 +1570,8 @@ function applyCover(){
   // Re-render cover page
   const ci=S.pages.findIndex(p=>p.type==='cover');
   if(ci>=0){
-    const wrap=document.querySelector(`[data-pgi="${ci}"]`);
+    const canvasEl=document.getElementById('canvas');
+    const wrap=canvasEl.querySelector(`[data-pgi="${ci}"]`);
     if(wrap){
       const old=wrap.querySelector('.book-cover');
       if(old) old.replaceWith(makeCoverEl(ci));
@@ -1571,6 +1580,61 @@ function applyCover(){
   updateOutline();
   closeModal('modal-cover');
   notify('표지 적용 완료');
+}
+async function genAICoverImage(){
+  const key=S.aiKey||(document.getElementById('ai-key-inp')?document.getElementById('ai-key-inp').value.trim():'');
+  const btn=document.getElementById('cv-ai-btn');
+  const status=document.getElementById('cv-ai-status');
+  if(!key){
+    status.style.color='#e94560';
+    status.textContent='AI 패널에서 Gemini API 키를 먼저 저장해주세요.';
+    return;
+  }
+  const title=document.getElementById('cv-title').value||'책 제목';
+  const sub=document.getElementById('cv-sub').value||'';
+  btn.disabled=true;
+  btn.innerHTML='<span class="spinner"></span> 생성 중…';
+  status.style.color='#7acc7a';
+  status.textContent='';
+  const prompt=`Create a beautiful artistic book cover background image for a book titled "${title}"${sub?` with subtitle "${sub}"`:''}. Painterly, professional composition, rich colors, no text, portrait orientation.`;
+  try{
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash:generateContent?key=${key}`,{
+      method:'POST',
+      headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({
+        contents:[{parts:[{text:prompt}]}],
+        generationConfig:{responseModalities:['IMAGE','TEXT']}
+      })
+    });
+    const data=await resp.json();
+    if(data.error){
+      status.style.color='#e94560';
+      status.textContent='오류: '+data.error.message;
+    } else {
+      const parts=data.candidates?.[0]?.content?.parts||[];
+      const imgPart=parts.find(p=>p.inlineData);
+      if(imgPart){
+        const dataUrl=`data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+        coverImageData=dataUrl;
+        document.getElementById('cv-prev-bg').src=dataUrl;
+        document.getElementById('cv-prev-bg').style.display='block';
+        document.getElementById('cv-img-prev-el').src=dataUrl;
+        document.getElementById('cv-img-preview').style.display='block';
+        document.getElementById('cv-dz').textContent='AI 생성 이미지 적용됨 ✦';
+        status.style.color='#7acc7a';
+        status.textContent='✓ 이미지 생성 완료! 표지 적용 버튼을 눌러 반영하세요.';
+      } else {
+        status.style.color='#e94560';
+        status.textContent='이미지를 생성하지 못했습니다. 다시 시도해 주세요.';
+      }
+    }
+  } catch(err){
+    status.style.color='#e94560';
+    status.textContent='네트워크 오류: '+err.message;
+  } finally{
+    btn.disabled=false;
+    btn.innerHTML='✦ Gemini AI로 표지 이미지 생성';
+  }
 }
 function setupCoverDrag(){
   const dz=document.getElementById('cv-dz');
@@ -1627,9 +1691,10 @@ function applyEndpaper(){
   S.endpaper={pattern:S.endpaper.pattern, color:document.getElementById('ep-color').value};
   S.dirty=true;
   // Re-render endpaper pages
+  const canvasEl=document.getElementById('canvas');
   S.pages.forEach((pg,i)=>{
     if(pg.type==='endpaper'){
-      const wrap=document.querySelector(`[data-pgi="${i}"]`);
+      const wrap=canvasEl.querySelector(`[data-pgi="${i}"]`);
       if(wrap){
         const old=wrap.querySelector('.book-endpaper');
         if(old) old.replaceWith(makeEndpaperEl(i));
@@ -1775,10 +1840,19 @@ function openModal(id){
     document.getElementById('cv-author').value=S.cover.author;
     document.getElementById('cv-pub').value=S.cover.publisher;
     document.getElementById('cv-color').value=S.cover.bgColor;
+    coverImageData=S.cover.bgImage||null;
     if(S.cover.bgImage){
       document.getElementById('cv-prev-bg').src=S.cover.bgImage;
       document.getElementById('cv-prev-bg').style.display='block';
+      document.getElementById('cv-img-prev-el').src=S.cover.bgImage;
+      document.getElementById('cv-img-preview').style.display='block';
+      document.getElementById('cv-dz').textContent='이미지 선택됨 ✓';
+    } else {
+      document.getElementById('cv-prev-bg').style.display='none';
+      document.getElementById('cv-img-preview').style.display='none';
+      document.getElementById('cv-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
     }
+    document.getElementById('cv-ai-status').textContent='';
     previewCover();
   } else if(id==='modal-master'){
     const ms=S.master;
@@ -1958,7 +2032,7 @@ function addAIMsg(type, text){
   msgs.scrollTop=msgs.scrollHeight;
 }
 function aiQuick(type){
-  const wrap=document.querySelector(`[data-pgi="${S.curPage}"]`);
+  const wrap=pageEl(S.curPage);
   const cont=wrap?wrap.querySelector('.pg-content'):null;
   const selText=window.getSelection().toString();
   const pageText=cont?cont.innerText:'';
