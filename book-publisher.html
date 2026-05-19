@@ -73,13 +73,15 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 .pg-num{position:absolute;font-size:8.5pt;color:#666;z-index:2}
 
 /* Cover */
-.book-cover{display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;overflow:hidden;position:relative;flex-shrink:0}
-.cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.45}
-.cover-body{position:relative;z-index:1;padding:30mm 15mm;display:flex;flex-direction:column;align-items:center;gap:8pt;width:100%}
-.cover-title{font-size:22pt;font-weight:900;line-height:1.3;color:#fff;text-shadow:0 2px 8px rgba(0,0,0,.6)}
-.cover-subtitle{font-size:13pt;color:rgba(255,255,255,.8)}
-.cover-author{font-size:11pt;color:rgba(255,255,255,.7);margin-top:10pt}
-.cover-pub{font-size:9pt;color:rgba(255,255,255,.5);margin-top:auto}
+.book-cover{display:flex;flex-direction:column;overflow:hidden;position:relative;flex-shrink:0}
+.cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.cover-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1}
+.cover-body{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:18mm 14mm 12mm}
+.cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:5pt}
+.cover-title{font-size:28pt;font-weight:900;line-height:1.2;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.9);letter-spacing:-.3px;word-break:keep-all}
+.cover-subtitle{font-size:11pt;font-weight:400;color:rgba(255,255,255,.92);text-shadow:0 1px 8px rgba(0,0,0,.8);margin-top:3pt;word-break:keep-all}
+.cover-bottom{display:flex;align-items:center;gap:4pt;padding-top:5mm;border-top:.5pt solid rgba(255,255,255,.35)}
+.cover-pub{font-size:7.5pt;color:rgba(255,255,255,.78);text-shadow:0 1px 4px rgba(0,0,0,.7);letter-spacing:.5px}
 
 /* Endpaper */
 .book-endpaper{flex-shrink:0;overflow:hidden;position:relative}
@@ -185,11 +187,21 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 
 /* ── Back cover ── */
 .book-backcover{position:relative;flex-shrink:0;display:flex;flex-direction:column;overflow:hidden}
-.bc-top{flex:1;display:flex;align-items:center;padding:20mm 15mm 8mm;line-height:1.9;font-size:10pt;text-align:justify}
-.bc-author-bio{padding:5mm 15mm;font-size:9pt;border-top:.5pt solid rgba(255,255,255,.25)}
-.bc-bottom{padding:6mm 15mm;display:flex;align-items:center;gap:8mm;border-top:.5pt solid rgba(255,255,255,.25)}
-.bc-barcode-box{border:1pt solid;padding:3mm 4mm;font-size:7pt;font-family:monospace;text-align:center;min-width:38mm;line-height:1.6}
-.bc-price-box{font-size:10pt;font-weight:bold}
+.bc-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
+.bc-overlay{position:absolute;inset:0;background:rgba(0,0,0,.55);z-index:1}
+.bc-body{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:14mm 13mm 10mm}
+.bc-lbl{font-size:6.5pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.55;margin-bottom:3pt}
+.bc-synopsis{flex:1;overflow:hidden}
+.bc-synopsis-text{font-size:9.5pt;line-height:1.9;text-align:justify;word-break:keep-all}
+.bc-author-sec{padding-top:5mm;margin-top:5mm;border-top:.5pt solid rgba(255,255,255,.22)}
+.bc-author-name{font-size:9pt;font-weight:700;margin-bottom:2pt}
+.bc-author-bio-text{font-size:8pt;line-height:1.7;opacity:.88}
+.bc-bottom-bar{display:flex;align-items:center;gap:5mm;padding-top:5mm;margin-top:5mm;border-top:.5pt solid rgba(255,255,255,.22)}
+.bc-qr-box{width:13mm;height:13mm;border:.7pt solid currentColor;display:flex;flex-direction:column;align-items:center;justify-content:center;font-size:5pt;line-height:1.4;text-align:center;opacity:.75;flex-shrink:0}
+.bc-pub-block{flex:1}
+.bc-pub-name-text{font-size:9pt;font-weight:700}
+.bc-isbn-line{font-size:7.5pt;opacity:.75;margin-top:1.5pt}
+.bc-price-text{font-size:9pt;font-weight:700;flex-shrink:0}
 
 /* ── Spine ── */
 .spine-strip{flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
@@ -390,13 +402,17 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     </div>
     <div>
       <div class="rp-ttl" style="margin-bottom:8px">미리보기</div>
-      <div id="cv-preview" style="width:100%;aspect-ratio:.707;background:#2c3e50;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;position:relative;overflow:hidden;border-radius:4px;padding:20px">
-        <img id="cv-prev-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;opacity:.4;display:none">
-        <div style="position:relative;z-index:1;color:#fff">
-          <div id="cv-prev-title" style="font-size:16px;font-weight:bold;margin-bottom:6px">책 제목</div>
-          <div id="cv-prev-sub" style="font-size:10px;opacity:.8"></div>
-          <div id="cv-prev-author" style="font-size:9px;opacity:.7;margin-top:8px"></div>
-          <div id="cv-prev-pub" style="font-size:8px;opacity:.5;margin-top:20px"></div>
+      <div id="cv-preview" style="width:100%;aspect-ratio:.707;background:#2c3e50;position:relative;overflow:hidden;border-radius:4px">
+        <img id="cv-prev-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">
+        <div id="cv-prev-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,.45);display:none"></div>
+        <div style="position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:16px 14px 10px;box-sizing:border-box">
+          <div style="flex:1;display:flex;flex-direction:column;justify-content:center;gap:5px">
+            <div id="cv-prev-title" style="font-size:17px;font-weight:900;line-height:1.2;color:#fff;text-shadow:0 2px 10px rgba(0,0,0,.9);word-break:keep-all">책 제목</div>
+            <div id="cv-prev-sub" style="font-size:9px;color:rgba(255,255,255,.9);text-shadow:0 1px 6px rgba(0,0,0,.8)"></div>
+          </div>
+          <div id="cv-prev-bottom" style="display:flex;align-items:center;padding-top:8px;border-top:1px solid rgba(255,255,255,.3)">
+            <div id="cv-prev-pub" style="font-size:7.5px;color:rgba(255,255,255,.78)"></div>
+          </div>
         </div>
       </div>
     </div>
@@ -529,14 +545,30 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   <button class="mclose" onclick="closeModal('modal-backcover')">✕</button>
   <div class="row2">
     <div>
-      <div class="fg"><label>책 소개문 (Synopsis)</label><textarea id="bc-synopsis" rows="5" placeholder="책의 내용을 소개하는 글을 입력하세요."></textarea></div>
-      <div class="fg"><label>저자 소개</label><textarea id="bc-author-bio" rows="3" placeholder="저자 소개 (선택사항)"></textarea></div>
+      <div class="fg"><label>책 소개문 (Synopsis)</label><textarea id="bc-synopsis" rows="4" placeholder="책의 내용을 소개하는 글을 입력하세요." oninput="previewBackCover()"></textarea></div>
+      <div class="fg"><label>저자 소개</label><textarea id="bc-author-bio" rows="2" placeholder="저자 소개 (선택사항)" oninput="previewBackCover()"></textarea></div>
       <div class="row2">
-        <div class="fg"><label>ISBN</label><input id="bc-isbn" placeholder="979-11-XXXXX-XX-X"></div>
-        <div class="fg"><label>정가</label><input id="bc-price" placeholder="예: 18,000원"></div>
+        <div class="fg"><label>ISBN</label><input id="bc-isbn" placeholder="979-11-XXXXX-XX-X" oninput="previewBackCover()"></div>
+        <div class="fg"><label>정가</label><input id="bc-price" placeholder="예: 18,000원" oninput="previewBackCover()"></div>
       </div>
-      <div class="fg"><label>배경 색상</label><input type="color" id="bc-bgcolor" value="#2c3e50" onchange="previewBackCover()"></div>
-      <div class="fg"><label>텍스트 색상</label><input type="color" id="bc-textcolor" value="#ffffff" onchange="previewBackCover()"></div>
+      <div class="row2">
+        <div class="fg"><label>배경 색상</label><input type="color" id="bc-bgcolor" value="#2c3e50" onchange="previewBackCover()"></div>
+        <div class="fg"><label>텍스트 색상</label><input type="color" id="bc-textcolor" value="#ffffff" onchange="previewBackCover()"></div>
+      </div>
+      <div class="fg"><label>배경 이미지</label>
+        <div class="dz" id="bc-dz" onclick="document.getElementById('bc-img-inp').click()">클릭하여 이미지 업로드 (또는 드래그)</div>
+        <input type="file" id="bc-img-inp" accept="image/*" style="display:none" onchange="loadBackCoverImage(event)">
+      </div>
+      <div class="fg" id="bc-img-preview" style="display:none">
+        <label>이미지 미리보기</label>
+        <img id="bc-img-prev-el" style="max-width:100%;border-radius:4px;border:1px solid #333">
+        <button class="btn-s" style="margin-top:6px;width:100%" onclick="removeBackCoverImage()">이미지 제거</button>
+      </div>
+      <div class="fg">
+        <label>AI 뒤표지 이미지 생성</label>
+        <button class="btn-p" id="bc-ai-btn" onclick="genAIBackCoverImage()" style="width:100%;margin-bottom:5px;background:#4a3fa0;border-color:#4a3fa0">✦ Gemini AI로 뒤표지 이미지 생성</button>
+        <div id="bc-ai-status" style="font-size:11px;color:#7acc7a;min-height:16px"></div>
+      </div>
       <div class="rp-ttl" style="margin:10px 0 6px">책등(Spine) 정보</div>
       <div class="rp-row">
         <span class="rp-lbl" style="width:70px">용지 두께</span>
@@ -555,12 +587,27 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
         <div id="bc-prev-spine" style="width:8px;background:#2c3e50;display:flex;align-items:center;justify-content:center;overflow:hidden">
           <span id="bc-prev-spine-text" style="writing-mode:vertical-rl;font-size:7px;color:rgba(255,255,255,.7);white-space:nowrap;overflow:hidden"></span>
         </div>
-        <div id="bc-preview" style="width:100%;aspect-ratio:.707;background:#2c3e50;display:flex;flex-direction:column;position:relative;overflow:hidden">
-          <div id="bc-prev-top" style="flex:1;padding:15px 12px 8px;font-size:9px;line-height:1.7;text-align:justify;overflow:hidden"></div>
-          <div id="bc-prev-bio" style="padding:5px 12px;font-size:8px;border-top:1px solid rgba(255,255,255,.2);display:none"></div>
-          <div id="bc-prev-bottom" style="padding:6px 12px;display:flex;align-items:center;gap:8px;border-top:1px solid rgba(255,255,255,.2)">
-            <div id="bc-prev-barcode" style="border:1px solid rgba(255,255,255,.5);padding:3px 5px;font-family:monospace;font-size:6px;line-height:1.5;min-width:40px;text-align:center"></div>
-            <div id="bc-prev-price" style="font-size:9px;font-weight:bold"></div>
+        <div id="bc-preview" style="width:100%;aspect-ratio:.707;background:#2c3e50;position:relative;overflow:hidden;display:flex;flex-direction:column">
+          <img id="bc-prev-bg" style="position:absolute;inset:0;width:100%;height:100%;object-fit:cover;display:none">
+          <div id="bc-prev-bg-overlay" style="position:absolute;inset:0;background:rgba(0,0,0,.55);display:none"></div>
+          <div id="bc-prev-body" style="position:relative;z-index:2;flex:1;display:flex;flex-direction:column;padding:10px 9px 7px;font-size:8px">
+            <div id="bc-prev-synopsis-wrap" style="flex:1;overflow:hidden">
+              <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.55;margin-bottom:2px">Synopsis</div>
+              <div id="bc-prev-synopsis" style="line-height:1.7;text-align:justify"></div>
+            </div>
+            <div id="bc-prev-author-sec" style="display:none;padding-top:4px;margin-top:4px;border-top:0.5px solid rgba(255,255,255,.2)">
+              <div style="font-size:5.5px;font-weight:700;letter-spacing:1.5px;text-transform:uppercase;opacity:.55;margin-bottom:2px">저자 소개</div>
+              <div id="bc-prev-author-name" style="font-size:7px;font-weight:700"></div>
+              <div id="bc-prev-bio" style="font-size:6.5px;opacity:.88"></div>
+            </div>
+            <div style="display:flex;align-items:center;gap:4px;padding-top:4px;margin-top:4px;border-top:0.5px solid rgba(255,255,255,.2)">
+              <div style="width:11px;height:11px;border:0.5px solid currentColor;display:flex;align-items:center;justify-content:center;font-size:4px;opacity:.7;flex-shrink:0;text-align:center;line-height:1.2">QR<br>CODE</div>
+              <div id="bc-prev-pub-block" style="flex:1">
+                <div id="bc-prev-pubname" style="font-size:6.5px;font-weight:700"></div>
+                <div id="bc-prev-isbn-line" style="font-size:5.5px;opacity:.75;margin-top:1px"></div>
+              </div>
+              <div id="bc-prev-price" style="font-size:6.5px;font-weight:700"></div>
+            </div>
           </div>
         </div>
       </div>
@@ -657,7 +704,7 @@ const S = {
     firstBlank:false
   },
   cover:{title:'책 제목', subtitle:'', author:'', publisher:'', bgColor:'#2c3e50', bgImage:null},
-  backCover:{synopsis:'', authorBio:'', isbn:'', price:'', bgColor:'#2c3e50', textColor:'#ffffff', paperThick:0.06},
+  backCover:{synopsis:'', authorBio:'', isbn:'', price:'', bgColor:'#2c3e50', textColor:'#ffffff', paperThick:0.06, bgImage:null},
   endpaper:{pattern:'plain', color:'#f5f0e8'},
   font:{family:'바탕', size:10, lh:1.8},
   // pages: [{id, type:'cover'|'endpaper'|'content'|'backcover', section:'body'|'prelim'|'none', content:''}]
@@ -678,6 +725,7 @@ function init(){
   buildPatternPicker();
   buildChecklist();
   setupCoverDrag();
+  setupBackCoverDrag();
 
   // Default book structure (출판 표준 섹션 구성)
   S.pages = [
@@ -728,7 +776,8 @@ function renderAll(){
 function renderPage(pg, i){
   const canvas=document.getElementById('canvas');
   const wrap=document.createElement('div');
-  wrap.style.position='relative';
+  const wrapBg=pg.type==='cover'?S.cover.bgColor:pg.type==='backcover'?S.backCover.bgColor:'#fff';
+  wrap.style.cssText=`position:relative;background:${wrapBg}`;
   wrap.dataset.pgid=pg.id;
   wrap.dataset.pgi=i;
 
@@ -763,29 +812,36 @@ function getPageDomEl(i){ return cvs().querySelector(`[data-pgi="${i}"] .book-pa
 // ── Cover element ──────────────────────────────────
 function makeCoverEl(i){
   const {w,h}=fmt();
+  const cv=S.cover;
   const el=document.createElement('div');
   el.className='book-cover book-page';
   el.dataset.pgi=i;
-  el.style.cssText=`width:${mm(w)};height:${mm(h)};cursor:pointer`;
-  el.onclick=()=>{ openModal('modal-cover'); };
-
-  const cv=S.cover;
-  el.style.background=cv.bgColor;
+  el.style.cssText=`width:${mm(w)};height:${mm(h)};cursor:pointer;background:${cv.bgColor}`;
 
   if(cv.bgImage){
     const bg=document.createElement('img');
     bg.className='cover-bg'; bg.src=cv.bgImage;
     el.appendChild(bg);
+    const ov=document.createElement('div');
+    ov.className='cover-overlay';
+    el.appendChild(ov);
   }
+
   const body=document.createElement('div');
   body.className='cover-body';
-  body.innerHTML=`
-    <div class="cover-title">${esc(cv.title)}</div>
-    ${cv.subtitle?`<div class="cover-subtitle">${esc(cv.subtitle)}</div>`:''}
-    ${cv.author?`<div class="cover-author">${esc(cv.author)}</div>`:''}
-    ${cv.publisher?`<div class="cover-pub">${esc(cv.publisher)}</div>`:''}
-  `;
+
+  const tw=document.createElement('div');
+  tw.className='cover-title-wrap';
+  tw.innerHTML=`<div class="cover-title">${esc(cv.title||'책 제목')}</div>${cv.subtitle?`<div class="cover-subtitle">${esc(cv.subtitle)}</div>`:''}`;
+  body.appendChild(tw);
+
+  const bot=document.createElement('div');
+  bot.className='cover-bottom';
+  bot.innerHTML=`<span class="cover-pub">${esc(cv.publisher||'')}</span>`;
+  body.appendChild(bot);
+
   el.appendChild(body);
+  el.onclick=()=>{ openModal('modal-cover'); };
   el.addEventListener('click',()=>selectPage(i));
   return el;
 }
@@ -942,41 +998,62 @@ function changePageSection(val){
 function makeBackCoverEl(i){
   const {w,h}=fmt();
   const bc=S.backCover;
+  const cv=S.cover;
   const el=document.createElement('div');
   el.className='book-backcover book-page';
   el.dataset.pgi=i;
   el.style.cssText=`width:${mm(w)};height:${mm(h)};background:${bc.bgColor};color:${bc.textColor}`;
   el.addEventListener('click',()=>{ selectPage(i); openModal('modal-backcover'); });
 
-  const top=document.createElement('div');
-  top.className='bc-top';
-  top.style.color=bc.textColor;
-  top.textContent=bc.synopsis||'(책 소개문을 입력하세요 — 뒤표지 버튼 클릭)';
-  el.appendChild(top);
-
-  if(bc.authorBio){
-    const bio=document.createElement('div');
-    bio.className='bc-author-bio';
-    bio.style.color=bc.textColor;
-    bio.textContent=bc.authorBio;
-    el.appendChild(bio);
+  if(bc.bgImage){
+    const bg=document.createElement('img');
+    bg.className='bc-bg'; bg.src=bc.bgImage;
+    el.appendChild(bg);
+    const ov=document.createElement('div');
+    ov.className='bc-overlay';
+    el.appendChild(ov);
   }
 
-  const bot=document.createElement('div');
-  bot.className='bc-bottom';
-  const barcode=document.createElement('div');
-  barcode.className='bc-barcode-box';
-  barcode.style.cssText=`border-color:${bc.textColor};color:${bc.textColor}`;
-  barcode.innerHTML=bc.isbn?`ISBN<br>${bc.isbn}`:'ISBN<br>979-11-XXXXX-XX-X';
-  bot.appendChild(barcode);
+  const body=document.createElement('div');
+  body.className='bc-body';
+
+  // Synopsis
+  const synSec=document.createElement('div');
+  synSec.className='bc-synopsis';
+  synSec.innerHTML=`<div class="bc-lbl">Synopsis</div><div class="bc-synopsis-text">${esc(bc.synopsis)||'<em style="opacity:.5">(뒤표지 버튼을 클릭하여 소개문을 입력하세요)</em>'}</div>`;
+  body.appendChild(synSec);
+
+  // Author section
+  if(cv.author||bc.authorBio){
+    const authorSec=document.createElement('div');
+    authorSec.className='bc-author-sec';
+    authorSec.innerHTML=`<div class="bc-lbl">저자 소개</div>${cv.author?`<div class="bc-author-name">${esc(cv.author)}</div>`:''}${bc.authorBio?`<div class="bc-author-bio-text">${esc(bc.authorBio)}</div>`:''}`;
+    body.appendChild(authorSec);
+  }
+
+  // Bottom bar: QR / publisher / ISBN / price
+  const botBar=document.createElement('div');
+  botBar.className='bc-bottom-bar';
+
+  const qr=document.createElement('div');
+  qr.className='bc-qr-box';
+  qr.style.borderColor=bc.textColor;
+  qr.innerHTML='▦<br>QR';
+  botBar.appendChild(qr);
+
+  const pubBlock=document.createElement('div');
+  pubBlock.className='bc-pub-block';
+  pubBlock.innerHTML=`${cv.publisher?`<div class="bc-pub-name-text">${esc(cv.publisher)}</div>`:''}${bc.isbn?`<div class="bc-isbn-line">ISBN ${esc(bc.isbn)}</div>`:''}`;
+  botBar.appendChild(pubBlock);
+
   if(bc.price){
-    const pr=document.createElement('div');
-    pr.className='bc-price-box';
-    pr.style.color=bc.textColor;
-    pr.textContent=bc.price;
-    bot.appendChild(pr);
+    const priceEl=document.createElement('div');
+    priceEl.className='bc-price-text';
+    priceEl.textContent=bc.price;
+    botBar.appendChild(priceEl);
   }
-  el.appendChild(bot);
+  body.appendChild(botBar);
+  el.appendChild(body);
   return el;
 }
 
@@ -998,15 +1075,25 @@ function previewBackCover(){
   const spineW=Math.round(bodyPgs*thick*10)/10;
 
   document.getElementById('bc-preview').style.background=col;
-  document.getElementById('bc-prev-top').style.cssText=`flex:1;padding:15px 12px 8px;font-size:9px;line-height:1.7;text-align:justify;overflow:hidden;color:${tcol}`;
-  document.getElementById('bc-prev-top').textContent=syn||'(책 소개문)';
-  const bioEl=document.getElementById('bc-prev-bio');
-  if(bio){ bioEl.style.display='block'; bioEl.style.color=tcol; bioEl.textContent=bio; }
-  else bioEl.style.display='none';
-  document.getElementById('bc-prev-barcode').style.cssText=`border:1px solid ${tcol};padding:3px 5px;font-family:monospace;font-size:6px;line-height:1.5;min-width:40px;text-align:center;color:${tcol}`;
-  document.getElementById('bc-prev-barcode').innerHTML=isbn?`ISBN<br>${isbn}`:'ISBN<br>979-11-XXXXX-XX-X';
-  document.getElementById('bc-prev-price').style.cssText=`font-size:9px;font-weight:bold;color:${tcol}`;
+  document.getElementById('bc-prev-body').style.color=tcol;
+  document.getElementById('bc-prev-synopsis').textContent=syn||'(책 소개문을 입력하세요)';
+
+  const authorSec=document.getElementById('bc-prev-author-sec');
+  const author=S.cover.author||'';
+  if(author||bio){
+    authorSec.style.display='block';
+    authorSec.style.borderTopColor=`rgba(128,128,128,.3)`;
+    const nameEl=document.getElementById('bc-prev-author-name');
+    if(nameEl) nameEl.textContent=author;
+    document.getElementById('bc-prev-bio').textContent=bio;
+  } else {
+    authorSec.style.display='none';
+  }
+
+  document.getElementById('bc-prev-pubname').textContent=S.cover.publisher||'';
+  document.getElementById('bc-prev-isbn-line').textContent=isbn?`ISBN ${isbn}`:'';
   document.getElementById('bc-prev-price').textContent=price;
+
   // Spine
   const spineEl=document.getElementById('bc-prev-spine');
   spineEl.style.cssText=`width:${Math.max(spineW*2,6)}px;background:${col};filter:brightness(.8);display:flex;align-items:center;justify-content:center;overflow:hidden`;
@@ -1023,7 +1110,8 @@ function applyBackCover(){
     price:document.getElementById('bc-price').value,
     bgColor:document.getElementById('bc-bgcolor').value,
     textColor:document.getElementById('bc-textcolor').value,
-    paperThick:parseFloat(document.getElementById('bc-paper-thick').value)||0.06
+    paperThick:parseFloat(document.getElementById('bc-paper-thick').value)||0.06,
+    bgImage:backCoverImageData
   };
   S.dirty=true;
   // Re-render backcover page(s)
@@ -1528,33 +1616,40 @@ let coverImageData=null;
 function previewCover(){
   const title=document.getElementById('cv-title').value;
   const sub=document.getElementById('cv-sub').value;
-  const author=document.getElementById('cv-author').value;
   const pub=document.getElementById('cv-pub').value;
   const col=document.getElementById('cv-color').value;
   document.getElementById('cv-preview').style.background=col;
-  document.getElementById('cv-prev-title').textContent=title;
+  document.getElementById('cv-prev-title').textContent=title||'책 제목';
   document.getElementById('cv-prev-sub').textContent=sub;
-  document.getElementById('cv-prev-author').textContent=author;
   document.getElementById('cv-prev-pub').textContent=pub;
+  const botEl=document.getElementById('cv-prev-bottom');
+  if(botEl) botEl.style.display=pub?'flex':'none';
+}
+function setCoverPreviewImage(dataUrl){
+  document.getElementById('cv-prev-bg').src=dataUrl;
+  document.getElementById('cv-prev-bg').style.display='block';
+  document.getElementById('cv-prev-overlay').style.display='block';
+  document.getElementById('cv-img-prev-el').src=dataUrl;
+  document.getElementById('cv-img-preview').style.display='block';
+}
+function clearCoverPreviewImage(){
+  document.getElementById('cv-prev-bg').style.display='none';
+  document.getElementById('cv-prev-overlay').style.display='none';
+  document.getElementById('cv-img-preview').style.display='none';
 }
 function loadCoverImage(e){
   const file=e.target.files[0]; if(!file) return;
   const r=new FileReader();
   r.onload=ev=>{
     coverImageData=ev.target.result;
-    document.getElementById('cv-prev-bg').src=coverImageData;
-    document.getElementById('cv-prev-bg').style.display='block';
-    const prev=document.getElementById('cv-img-prev-el');
-    prev.src=coverImageData;
-    document.getElementById('cv-img-preview').style.display='block';
+    setCoverPreviewImage(coverImageData);
     document.getElementById('cv-dz').textContent='이미지 선택됨 ✓';
   };
   r.readAsDataURL(file);
 }
 function removeCoverImage(){
   coverImageData=null;
-  document.getElementById('cv-prev-bg').style.display='none';
-  document.getElementById('cv-img-preview').style.display='none';
+  clearCoverPreviewImage();
   document.getElementById('cv-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
 }
 function applyCover(){
@@ -1573,6 +1668,7 @@ function applyCover(){
     const canvasEl=document.getElementById('canvas');
     const wrap=canvasEl.querySelector(`[data-pgi="${ci}"]`);
     if(wrap){
+      wrap.style.background=S.cover.bgColor;
       const old=wrap.querySelector('.book-cover');
       if(old) old.replaceWith(makeCoverEl(ci));
     }
@@ -1616,10 +1712,7 @@ async function genAICoverImage(){
       if(imgPart){
         const dataUrl=`data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
         coverImageData=dataUrl;
-        document.getElementById('cv-prev-bg').src=dataUrl;
-        document.getElementById('cv-prev-bg').style.display='block';
-        document.getElementById('cv-img-prev-el').src=dataUrl;
-        document.getElementById('cv-img-preview').style.display='block';
+        setCoverPreviewImage(dataUrl);
         document.getElementById('cv-dz').textContent='AI 생성 이미지 적용됨 ✦';
         status.style.color='#7acc7a';
         status.textContent='✓ 이미지 생성 완료! 표지 적용 버튼을 눌러 반영하세요.';
@@ -1636,6 +1729,80 @@ async function genAICoverImage(){
     btn.innerHTML='✦ Gemini AI로 표지 이미지 생성';
   }
 }
+// ── Back cover image helpers ───────────────────────
+let backCoverImageData=null;
+function setBackCoverPreviewImage(dataUrl){
+  document.getElementById('bc-prev-bg').src=dataUrl;
+  document.getElementById('bc-prev-bg').style.display='block';
+  document.getElementById('bc-prev-bg-overlay').style.display='block';
+  document.getElementById('bc-img-prev-el').src=dataUrl;
+  document.getElementById('bc-img-preview').style.display='block';
+}
+function clearBackCoverPreviewImage(){
+  document.getElementById('bc-prev-bg').style.display='none';
+  document.getElementById('bc-prev-bg-overlay').style.display='none';
+  document.getElementById('bc-img-preview').style.display='none';
+}
+function loadBackCoverImage(e){
+  const file=e.target.files[0]; if(!file) return;
+  const r=new FileReader();
+  r.onload=ev=>{
+    backCoverImageData=ev.target.result;
+    setBackCoverPreviewImage(backCoverImageData);
+    document.getElementById('bc-dz').textContent='이미지 선택됨 ✓';
+  };
+  r.readAsDataURL(file);
+}
+function removeBackCoverImage(){
+  backCoverImageData=null;
+  clearBackCoverPreviewImage();
+  document.getElementById('bc-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
+}
+async function genAIBackCoverImage(){
+  const key=S.aiKey||(document.getElementById('ai-key-inp')?document.getElementById('ai-key-inp').value.trim():'');
+  const btn=document.getElementById('bc-ai-btn');
+  const status=document.getElementById('bc-ai-status');
+  if(!key){ status.style.color='#e94560'; status.textContent='AI 패널에서 Gemini API 키를 먼저 저장해주세요.'; return; }
+  const title=S.cover.title||document.getElementById('cv-title').value||'책';
+  const sub=S.cover.subtitle||'';
+  btn.disabled=true; btn.innerHTML='<span class="spinner"></span> 생성 중…';
+  status.style.color='#7acc7a'; status.textContent='';
+  const prompt=`Create a moody, atmospheric background image for the back cover of a book titled "${title}"${sub?` with subtitle "${sub}"`:''}. Subtle, textured, dark and elegant. No text, no people, abstract or nature-based composition, portrait orientation.`;
+  try{
+    const resp=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-image:generateContent?key=${key}`,{
+      method:'POST', headers:{'Content-Type':'application/json'},
+      body:JSON.stringify({contents:[{parts:[{text:prompt}]}],generationConfig:{responseModalities:['TEXT','IMAGE']}})
+    });
+    const data=await resp.json();
+    if(data.error){ status.style.color='#e94560'; status.textContent='오류: '+data.error.message; }
+    else{
+      const parts=data.candidates?.[0]?.content?.parts||[];
+      const imgPart=parts.find(p=>p.inlineData);
+      if(imgPart){
+        const dataUrl=`data:${imgPart.inlineData.mimeType};base64,${imgPart.inlineData.data}`;
+        backCoverImageData=dataUrl;
+        setBackCoverPreviewImage(dataUrl);
+        document.getElementById('bc-dz').textContent='AI 생성 이미지 적용됨 ✦';
+        status.style.color='#7acc7a'; status.textContent='✓ 이미지 생성 완료! 뒤표지 적용 버튼을 눌러 반영하세요.';
+      } else { status.style.color='#e94560'; status.textContent='이미지를 생성하지 못했습니다. 다시 시도해 주세요.'; }
+    }
+  } catch(err){ status.style.color='#e94560'; status.textContent='네트워크 오류: '+err.message; }
+  finally{ btn.disabled=false; btn.innerHTML='✦ Gemini AI로 뒤표지 이미지 생성'; }
+}
+function setupBackCoverDrag(){
+  const dz=document.getElementById('bc-dz');
+  dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
+  dz.addEventListener('dragleave',()=>dz.classList.remove('over'));
+  dz.addEventListener('drop',e=>{
+    e.preventDefault(); dz.classList.remove('over');
+    const file=e.dataTransfer.files[0];
+    if(file&&file.type.startsWith('image/')){
+      const r=new FileReader();
+      r.onload=ev=>{ backCoverImageData=ev.target.result; setBackCoverPreviewImage(backCoverImageData); dz.textContent='이미지 선택됨 ✓'; };
+      r.readAsDataURL(file);
+    }
+  });
+}
 function setupCoverDrag(){
   const dz=document.getElementById('cv-dz');
   dz.addEventListener('dragover',e=>{e.preventDefault();dz.classList.add('over');});
@@ -1645,7 +1812,7 @@ function setupCoverDrag(){
     const file=e.dataTransfer.files[0];
     if(file&&file.type.startsWith('image/')){
       const r=new FileReader();
-      r.onload=ev=>{ coverImageData=ev.target.result; document.getElementById('cv-prev-bg').src=coverImageData; document.getElementById('cv-prev-bg').style.display='block'; dz.textContent='이미지 선택됨 ✓'; };
+      r.onload=ev=>{ coverImageData=ev.target.result; setCoverPreviewImage(coverImageData); dz.textContent='이미지 선택됨 ✓'; };
       r.readAsDataURL(file);
     }
   });
@@ -1833,6 +2000,15 @@ function openModal(id){
     document.getElementById('bc-bgcolor').value=bc.bgColor||'#2c3e50';
     document.getElementById('bc-textcolor').value=bc.textColor||'#ffffff';
     document.getElementById('bc-paper-thick').value=bc.paperThick||0.06;
+    backCoverImageData=bc.bgImage||null;
+    if(bc.bgImage){
+      setBackCoverPreviewImage(bc.bgImage);
+      document.getElementById('bc-dz').textContent='이미지 선택됨 ✓';
+    } else {
+      clearBackCoverPreviewImage();
+      document.getElementById('bc-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
+    }
+    document.getElementById('bc-ai-status').textContent='';
     previewBackCover();
   } else if(id==='modal-cover'){
     document.getElementById('cv-title').value=S.cover.title;
@@ -1842,14 +2018,10 @@ function openModal(id){
     document.getElementById('cv-color').value=S.cover.bgColor;
     coverImageData=S.cover.bgImage||null;
     if(S.cover.bgImage){
-      document.getElementById('cv-prev-bg').src=S.cover.bgImage;
-      document.getElementById('cv-prev-bg').style.display='block';
-      document.getElementById('cv-img-prev-el').src=S.cover.bgImage;
-      document.getElementById('cv-img-preview').style.display='block';
+      setCoverPreviewImage(S.cover.bgImage);
       document.getElementById('cv-dz').textContent='이미지 선택됨 ✓';
     } else {
-      document.getElementById('cv-prev-bg').style.display='none';
-      document.getElementById('cv-img-preview').style.display='none';
+      clearCoverPreviewImage();
       document.getElementById('cv-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
     }
     document.getElementById('cv-ai-status').textContent='';
