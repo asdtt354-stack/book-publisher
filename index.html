@@ -234,7 +234,15 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
       <option value="크라운판">크라운판 (176×248)</option>
       <option value="46배판">46배판 (188×257)</option>
       <option value="A4">A4 (210×297)</option>
+      <option value="정사각형">정사각형 (210×210)</option>
+      <option value="사용자 정의">사용자 정의…</option>
     </select>
+    <span id="custom-size-ui" style="display:none;align-items:center;gap:3px;">
+      <input type="number" id="custom-w" class="ts" min="50" max="500" placeholder="너비" style="width:52px;" oninput="applyCustomFormat()">
+      <span style="font-size:11px;color:#aaa;">×</span>
+      <input type="number" id="custom-h" class="ts" min="50" max="500" placeholder="높이" style="width:52px;" oninput="applyCustomFormat()">
+      <span style="font-size:11px;color:#aaa;">mm</span>
+    </span>
     <select class="ts" id="sel-font" onchange="changeFont(this.value)">
       <option value="바탕">바탕</option>
       <option value="굴림">굴림</option>
@@ -616,7 +624,9 @@ const FORMATS = {
   '신국판': {w:152, h:225},
   '크라운판':{w:176, h:248},
   '46배판': {w:188, h:257},
-  'A4':    {w:210, h:297}
+  'A4':    {w:210, h:297},
+  '정사각형': {w:210, h:210},
+  '사용자 정의': {w:150, h:200}
 };
 
 const PATTERNS = [
@@ -1334,7 +1344,35 @@ function updateMargins(){
 }
 
 // ── Format / Font changes ──────────────────────────
-function changeFormat(v){ S.format=v; renderAll(); document.getElementById('sb-format').textContent='판형: '+v; notify('판형 변경: '+v); }
+function changeFormat(v){
+  const ui = document.getElementById('custom-size-ui');
+  if(v === '사용자 정의'){
+    ui.style.display = 'inline-flex';
+    const f = FORMATS['사용자 정의'];
+    const wEl = document.getElementById('custom-w');
+    const hEl = document.getElementById('custom-h');
+    if(!wEl.value) wEl.value = f.w;
+    if(!hEl.value) hEl.value = f.h;
+    S.format = '사용자 정의';
+    applyCustomFormat();
+    return;
+  }
+  ui.style.display = 'none';
+  S.format = v;
+  renderAll();
+  document.getElementById('sb-format').textContent = '판형: ' + v;
+  notify('판형 변경: ' + v);
+}
+function applyCustomFormat(){
+  const w = parseInt(document.getElementById('custom-w').value, 10);
+  const h = parseInt(document.getElementById('custom-h').value, 10);
+  if(!w || !h || w < 50 || h < 50) return;
+  FORMATS['사용자 정의'] = {w, h};
+  S.format = '사용자 정의';
+  renderAll();
+  document.getElementById('sb-format').textContent = `판형: 사용자 정의 (${w}×${h}mm)`;
+  notify(`사용자 정의 판형: ${w}×${h}mm`);
+}
 function changeFont(v){ S.font.family=v; renderAll(); }
 function changeFontSize(v){ S.font.size=parseFloat(v); renderAll(); }
 function changeLineHeight(v){ S.font.lh=parseFloat(v); renderAll(); }
@@ -1765,6 +1803,7 @@ function closeModal(id){ document.getElementById(id).classList.remove('on'); }
 function saveProject(){
   const data={
     version:2, projectName:S.projectName, format:S.format,
+    customSize: S.format==='사용자 정의' ? FORMATS['사용자 정의'] : undefined,
     margins:S.margins, master:S.master, cover:S.cover,
     backCover:S.backCover, endpaper:S.endpaper, font:S.font, pages:S.pages
   };
@@ -1798,6 +1837,14 @@ function onProjectLoaded(e){
       coverImageData=S.cover.bgImage||null;
       // Update UI inputs
       document.getElementById('sel-format').value=S.format;
+      if(S.format==='사용자 정의' && data.customSize){
+        FORMATS['사용자 정의']={w:data.customSize.w, h:data.customSize.h};
+        document.getElementById('custom-w').value=data.customSize.w;
+        document.getElementById('custom-h').value=data.customSize.h;
+        document.getElementById('custom-size-ui').style.display='inline-flex';
+      } else {
+        document.getElementById('custom-size-ui').style.display='none';
+      }
       document.getElementById('sel-font').value=S.font.family;
       document.getElementById('sel-size').value=S.font.size;
       document.getElementById('sel-lh').value=S.font.lh;
@@ -1828,7 +1875,7 @@ function newProject(){
 }
 function autoSaveCheck(){
   if(S.dirty){
-    const data={version:1,format:S.format,margins:S.margins,master:S.master,cover:S.cover,endpaper:S.endpaper,font:S.font,pages:S.pages,projectName:S.projectName};
+    const data={version:1,format:S.format,customSize:S.format==='사용자 정의'?FORMATS['사용자 정의']:undefined,margins:S.margins,master:S.master,cover:S.cover,endpaper:S.endpaper,font:S.font,pages:S.pages,projectName:S.projectName};
     localStorage.setItem('bp_autosave',JSON.stringify(data));
     document.getElementById('sb-saved').textContent='자동저장됨';
   }
@@ -1979,6 +2026,7 @@ window.addEventListener('DOMContentLoaded', ()=>{
       if(data.pages&&data.pages.length>0 && confirm('자동 저장된 파일이 있습니다. 불러오시겠습니까?')){
         Object.assign(S,{format:data.format||'B5',margins:data.margins||S.margins,master:data.master||S.master,cover:data.cover||S.cover,endpaper:data.endpaper||S.endpaper,font:data.font||S.font,pages:data.pages,projectName:data.projectName||'책'});
         coverImageData=S.cover.bgImage||null;
+        if(S.format==='사용자 정의'&&data.customSize){FORMATS['사용자 정의']={w:data.customSize.w,h:data.customSize.h};document.getElementById('custom-w').value=data.customSize.w;document.getElementById('custom-h').value=data.customSize.h;document.getElementById('custom-size-ui').style.display='inline-flex';}
         document.getElementById('sel-format').value=S.format;
         document.getElementById('sel-font').value=S.font.family;
         document.getElementById('sel-size').value=S.font.size;
