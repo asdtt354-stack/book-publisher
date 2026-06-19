@@ -343,6 +343,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <div class="rp-sec">
       <div class="rp-ttl">페이지 작업</div>
       <button class="rp-btn" onclick="addPage()">+ 빈 페이지 추가</button>
+      <button class="rp-btn" onclick="addEndpaperPage()" style="color:#7acc7a;border-color:#2a5a30">+ 속지 페이지 추가</button>
       <button class="rp-btn" onclick="deletePage()">× 현재 페이지 삭제</button>
       <button class="rp-btn" onclick="movePageUp()">↑ 페이지 위로</button>
       <button class="rp-btn" onclick="movePageDown()">↓ 페이지 아래로</button>
@@ -1622,6 +1623,12 @@ function addPage(){
   reRenderFrom(S.curPage+1);
   selectPage(S.curPage+1,true);
   notify('페이지 추가됨');
+}
+function addEndpaperPage(){
+  S.pages.splice(S.curPage+1,0,{id:uid(),type:'endpaper'});
+  reRenderFrom(S.curPage+1);
+  selectPage(S.curPage+1,true);
+  notify('속지 페이지 추가됨 — 속지 버튼으로 패턴/색상 변경 가능');
 }
 function deletePage(){
   if(S.pages.length<=1){notify('마지막 페이지는 삭제할 수 없습니다');return;}
