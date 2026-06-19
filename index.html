@@ -2841,9 +2841,7 @@ function autoSaveCheck(){
 
 // ── PDF Export ─────────────────────────────────────
 function exportPDF(){
-  const bleed=3;
   const {w,h}=fmt();
-  const pw=w+bleed*2, ph=h+bleed*2;
 
   const pw2=document.getElementById('print-wrap');
   pw2.innerHTML='';
@@ -2863,13 +2861,13 @@ function exportPDF(){
 
     const div=document.createElement('div');
     div.className='print-pg';
-    div.style.cssText=`width:${mm(pw)};height:${mm(ph)};position:relative;overflow:hidden;background:#fff`;
+    div.style.cssText=`width:${mm(w)};height:${mm(h)};position:relative;overflow:hidden;background:#fff;box-sizing:border-box`;
 
     if(pg.type==='cover'){
       // 표지: 직접 스타일로 구성
       const cv2=S.cover;
       const inner=document.createElement('div');
-      inner.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden;background-color:${cv2.bgColor}`;
+      inner.style.cssText=`position:absolute;top:0;left:0;width:${mm(w)};height:${mm(h)};overflow:hidden;background-color:${cv2.bgColor}`;
       if(cv2.bgImage){
         inner.style.backgroundImage=`url("${cv2.bgImage}")`;
         inner.style.backgroundSize='cover';
@@ -2900,7 +2898,7 @@ function exportPDF(){
       const bc2=S.backCover;
       const cv2=S.cover;
       const inner=document.createElement('div');
-      inner.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden;background-color:${bc2.bgColor};color:${bc2.textColor}`;
+      inner.style.cssText=`position:absolute;top:0;left:0;width:${mm(w)};height:${mm(h)};overflow:hidden;background-color:${bc2.bgColor};color:${bc2.textColor}`;
       if(bc2.bgImage){
         inner.style.backgroundImage=`url("${bc2.bgImage}")`;
         inner.style.backgroundSize='cover';
@@ -2941,14 +2939,14 @@ function exportPDF(){
       if(cv){
         const imgEl=document.createElement('img');
         imgEl.src=cv.toDataURL();
-        imgEl.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};object-fit:cover`;
+        imgEl.style.cssText=`position:absolute;top:0;left:0;width:${mm(w)};height:${mm(h)};object-fit:cover`;
         div.appendChild(imgEl);
       }
 
     } else {
       // 본문 페이지
       const cp=document.createElement('div');
-      cp.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden;background:#fff`;
+      cp.style.cssText=`position:absolute;top:0;left:0;width:${mm(w)};height:${mm(h)};overflow:hidden;background:#fff`;
 
       // 배경 이미지
       if(pg.bgImage){
@@ -2978,19 +2976,7 @@ function exportPDF(){
       div.appendChild(cp);
     }
 
-    // 재단선
-    const cropColor='rgba(0,0,0,.5)';
-    const mkLen=5, mkOff=1;
-    [
-      `top:0;left:${mm(bleed-mkOff-mkLen)};width:${mm(mkLen)};height:${mm(.3)}`,
-      `top:0;left:${mm(bleed+w+mkOff)};width:${mm(mkLen)};height:${mm(.3)}`,
-      `bottom:0;left:${mm(bleed-mkOff-mkLen)};width:${mm(mkLen)};height:${mm(.3)}`,
-      `bottom:0;left:${mm(bleed+w+mkOff)};width:${mm(mkLen)};height:${mm(.3)}`,
-      `left:0;top:${mm(bleed-mkOff-mkLen)};height:${mm(mkLen)};width:${mm(.3)}`,
-      `left:0;top:${mm(bleed+h+mkOff)};height:${mm(mkLen)};width:${mm(.3)}`,
-      `right:0;top:${mm(bleed-mkOff-mkLen)};height:${mm(mkLen)};width:${mm(.3)}`,
-      `right:0;top:${mm(bleed+h+mkOff)};height:${mm(mkLen)};width:${mm(.3)}`,
-    ].forEach(s=>{ const m=document.createElement('div'); m.style.cssText=`position:absolute;background:${cropColor};${s}`; div.appendChild(m); });
+    // 재단선 생략 (도련 없이 출력)
 
     pw2.appendChild(div);
   });
@@ -2999,7 +2985,7 @@ function exportPDF(){
 
   let style=document.getElementById('print-style');
   if(!style){ style=document.createElement('style'); style.id='print-style'; document.head.appendChild(style); }
-  style.textContent=`@media print{@page{size:${pw}mm ${ph}mm portrait;margin:0}body{margin:0;padding:0}#print-wrap{margin:0;padding:0}.print-pg{display:block;margin:0;padding:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
+  style.textContent=`@media print{@page{size:${w}mm ${h}mm portrait;margin:0}body{margin:0;padding:0}#print-wrap{margin:0;padding:0}.print-pg{display:block;width:${mm(w)};height:${mm(h)};margin:0;padding:0;overflow:hidden}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
 
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pw2.style.display='none'; pw2.innerHTML=''; }, 500); }, 300);
   notify('인쇄 창을 열었습니다. PDF로 저장하려면 "PDF로 저장"을 선택하세요.');
