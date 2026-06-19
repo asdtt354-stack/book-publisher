@@ -234,9 +234,10 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 /* ── Print / Export ── */
 @media print{
   body>*:not(#print-wrap){display:none!important}
-  #print-wrap{display:block!important}
+  #print-wrap{display:block!important;background:#fff!important}
+  body{background:#fff!important}
   @page{margin:0}
-  .print-pg{page-break-after:always;position:relative}
+  .print-pg{page-break-after:always;position:relative;background:#fff!important}
   .pg-sec-badge,.page-label{display:none!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .cover-title,.cover-subtitle,.cover-pub,.cover-bottom{color:#fff!important}
