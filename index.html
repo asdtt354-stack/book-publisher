@@ -2841,7 +2841,7 @@ function autoSaveCheck(){
 
 // ── PDF Export ─────────────────────────────────────
 function exportPDF(){
-  const bleed=3; // mm
+  const bleed=3;
   const {w,h}=fmt();
   const pw=w+bleed*2, ph=h+bleed*2;
 
@@ -2849,12 +2849,16 @@ function exportPDF(){
   pw2.innerHTML='';
   pw2.style.display='block';
 
-  // Build print pages
+  // 임시 오프스크린 컨테이너 (canvas 렌더링용)
+  const offscreen=document.createElement('div');
+  offscreen.style.cssText='position:fixed;left:-9999px;top:0;visibility:hidden';
+  document.body.appendChild(offscreen);
+
   S.pages.forEach((pg,i)=>{
-    // 빈 본문 페이지 또는 기본 텍스트만 있는 페이지는 PDF에서 건너뜀
+    // 빈 페이지 건너뜀 (배경이미지도 없고 텍스트도 없는 페이지)
     if(pg.type==='content' && !pg.bgImage){
-      const textOnly=(pg.content||'').replace(/<[^>]+>/g,'').trim();
-      if(!textOnly || textOnly==='글을 입력하세요.') return;
+      const txt=(pg.content||'').replace(/<[^>]+>/g,'').trim();
+      if(!txt || txt==='글을 입력하세요.') return;
     }
 
     const div=document.createElement('div');
@@ -2862,34 +2866,66 @@ function exportPDF(){
     div.style.cssText=`width:${mm(pw)};height:${mm(ph)};position:relative;overflow:hidden;background:#fff`;
 
     if(pg.type==='cover'){
-      const inner=makeCoverEl(i).cloneNode(true);
-      inner.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
+      const inner=makeCoverEl(i);
+      inner.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden`;
       div.appendChild(inner);
+
     } else if(pg.type==='backcover'){
-      const bc=makeBackCoverEl(i).cloneNode(true);
-      bc.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
+      const bc=makeBackCoverEl(i);
+      bc.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden`;
       div.appendChild(bc);
+
     } else if(pg.type==='endpaper'){
-      const ep=makeEndpaperEl(i);
-      // canvas → 이미지로 변환해서 삽입
-      const cv=ep.querySelector('canvas');
-      const imgEl=document.createElement('img');
-      imgEl.src=cv?cv.toDataURL():'';
-      imgEl.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};object-fit:cover`;
+      // 속지: 오프스크린에서 canvas 렌더링 후 이미지로 변환
       div.style.background=S.endpaper.color||'#f5f0e8';
-      div.appendChild(imgEl);
+      const ep=makeEndpaperEl(i);
+      ep.style.cssText=`position:absolute;left:-9999px;top:0;width:${mm(w)};height:${mm(h)}`;
+      offscreen.appendChild(ep);
+      const cv=ep.querySelector('canvas');
+      if(cv){
+        const imgEl=document.createElement('img');
+        imgEl.src=cv.toDataURL();
+        imgEl.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};object-fit:cover`;
+        div.appendChild(imgEl);
+      }
+
     } else {
-      const cp=makeContentEl(pg,i).cloneNode(true);
-      cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};${pg.bgImage?'':'background:#fff!important'}`;
-      cp.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
-      cp.querySelectorAll('.pg-sec-badge,.page-label,.no-print').forEach(e=>e.remove());
+      // 본문 페이지
+      const cp=document.createElement('div');
+      cp.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};overflow:hidden;background:#fff`;
+
+      // 배경 이미지
+      if(pg.bgImage){
+        cp.style.backgroundImage=`url("${pg.bgImage}")`;
+        cp.style.backgroundSize='cover';
+        cp.style.backgroundPosition='center';
+      }
+
+      // 텍스트 콘텐츠
+      const textDiv=document.createElement('div');
+      textDiv.className='pg-content';
+      const m=margins(i);
+      textDiv.style.cssText=`position:absolute;top:${mm(m.top)};bottom:${mm(m.bot)};left:${mm(m.left)};right:${mm(m.right)};font-family:'${S.font.family}',serif;font-size:${S.font.size}pt;line-height:${S.font.lh};color:#1a1a1a;overflow:hidden`;
+      textDiv.innerHTML=pg.content||'';
+      cp.appendChild(textDiv);
+
+      // 페이지 번호
+      const pn=getPageNumStr(i);
+      if(pn.show){
+        const numEl=document.createElement('div');
+        const bottom=mm(Math.floor(m.bot/2));
+        numEl.style.cssText=`position:absolute;font-size:9pt;color:#444;bottom:${bottom};${pn.align==='right'?`right:${mm(m.right)}`:`left:${mm(m.left)}`}`;
+        numEl.textContent=pn.str;
+        cp.appendChild(numEl);
+      }
+
       div.appendChild(cp);
     }
 
-    // Crop marks
+    // 재단선
     const cropColor='rgba(0,0,0,.5)';
     const mkLen=5, mkOff=1;
-    const marks=[
+    [
       `top:0;left:${mm(bleed-mkOff-mkLen)};width:${mm(mkLen)};height:${mm(.3)}`,
       `top:0;left:${mm(bleed+w+mkOff)};width:${mm(mkLen)};height:${mm(.3)}`,
       `bottom:0;left:${mm(bleed-mkOff-mkLen)};width:${mm(mkLen)};height:${mm(.3)}`,
@@ -2898,13 +2934,13 @@ function exportPDF(){
       `left:0;top:${mm(bleed+h+mkOff)};height:${mm(mkLen)};width:${mm(.3)}`,
       `right:0;top:${mm(bleed-mkOff-mkLen)};height:${mm(mkLen)};width:${mm(.3)}`,
       `right:0;top:${mm(bleed+h+mkOff)};height:${mm(mkLen)};width:${mm(.3)}`,
-    ];
-    marks.forEach(s=>{ const m=document.createElement('div'); m.style.cssText=`position:absolute;background:${cropColor};${s}`; div.appendChild(m); });
+    ].forEach(s=>{ const m=document.createElement('div'); m.style.cssText=`position:absolute;background:${cropColor};${s}`; div.appendChild(m); });
 
     pw2.appendChild(div);
   });
 
-  // Add @page print CSS
+  document.body.removeChild(offscreen);
+
   let style=document.getElementById('print-style');
   if(!style){ style=document.createElement('style'); style.id='print-style'; document.head.appendChild(style); }
   style.textContent=`@media print{@page{size:${pw}mm ${ph}mm portrait;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
