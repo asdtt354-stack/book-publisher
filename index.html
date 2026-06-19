@@ -296,6 +296,30 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <button class="tb icon" onclick="insertHeading(1)" title="제목1">H1</button>
     <button class="tb icon" onclick="insertHeading(2)" title="제목2">H2</button>
     <button class="tb icon" onclick="insertHeading(3)" title="제목3">H3</button>
+    <button class="tb icon" onclick="document.execCommand('bold')" title="굵게"><b>B</b></button>
+    <button class="tb icon" onclick="document.execCommand('italic')" title="기울임"><i>I</i></button>
+    <button class="tb icon" onclick="document.execCommand('underline')" title="밑줄"><u>U</u></button>
+    <button class="tb icon" title="글자 색상" style="padding:2px 4px">
+      <input type="color" id="txt-color" value="#000000" title="글자 색상"
+        style="width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0"
+        oninput="document.execCommand('foreColor',false,this.value)">
+    </button>
+    <button class="tb icon" title="글자 배경색" style="padding:2px 4px">
+      <input type="color" id="txt-bgcolor" value="#ffff00" title="글자 배경색"
+        style="width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0"
+        oninput="document.execCommand('hiliteColor',false,this.value)">
+    </button>
+    <select class="ts" id="sel-txt-size" onchange="setTextSize(this.value)" title="선택 글자 크기">
+      <option value="">크기</option>
+      <option value="12pt">12pt</option>
+      <option value="14pt">14pt</option>
+      <option value="16pt">16pt</option>
+      <option value="18pt">18pt</option>
+      <option value="24pt">24pt</option>
+      <option value="30pt">30pt</option>
+      <option value="36pt">36pt</option>
+      <option value="48pt">48pt</option>
+    </select>
     <button class="tb" onclick="insertImage()" title="이미지 삽입">🖼 이미지</button>
     <button class="tb" onclick="insertFullImage()" title="페이지 전체 채우기 이미지">🖼 전체채우기</button>
     <button class="tb" onclick="openModal('modal-table')" title="표 삽입">⊞ 표</button>
@@ -1669,6 +1693,24 @@ function insertHeading(level){
   cont.focus();
   document.execCommand('formatBlock',false,`h${level}`);
   S.dirty=true;
+}
+function setTextSize(size){
+  if(!size) return;
+  const sel=window.getSelection();
+  if(!sel||sel.isCollapsed) return;
+  document.execCommand('fontSize',false,'7'); // placeholder
+  // 실제 크기 적용
+  const wrap=pageEl(S.curPage);
+  const cont=wrap?wrap.querySelector('.pg-content'):null;
+  if(cont){
+    cont.querySelectorAll('font[size="7"]').forEach(el=>{
+      el.removeAttribute('size');
+      el.style.fontSize=size;
+    });
+    S.pages[S.curPage].content=cont.innerHTML;
+    S.dirty=true;
+  }
+  document.getElementById('sel-txt-size').value='';
 }
 
 // ── Insert image ───────────────────────────────────
