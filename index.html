@@ -2111,10 +2111,10 @@ async function applyBulkImages(){
       // 그림 페이지
       newPages.push({id:uid(),type:'content',section:sec,content:'',bgImage:src});
       // 빈 글 페이지
-      newPages.push({id:uid(),type:'content',section:sec,content:'<p>글을 입력하세요.</p>'});
+      newPages.push({id:uid(),type:'content',section:sec,content:''});
     } else if(mode==='text-img'){
       // 빈 글 페이지 먼저
-      newPages.push({id:uid(),type:'content',section:sec,content:'<p>글을 입력하세요.</p>'});
+      newPages.push({id:uid(),type:'content',section:sec,content:''});
       // 그림 페이지
       newPages.push({id:uid(),type:'content',section:sec,content:'',bgImage:src});
     } else if(mode==='img-only'){
@@ -2855,10 +2855,10 @@ function exportPDF(){
   document.body.appendChild(offscreen);
 
   S.pages.forEach((pg,i)=>{
-    // 빈 페이지 건너뜀 (배경이미지도 없고 텍스트도 없는 페이지)
+    // 빈 페이지 건너뜀 (배경이미지도 없고 텍스트도 전혀 없는 페이지만)
     if(pg.type==='content' && !pg.bgImage){
       const txt=(pg.content||'').replace(/<[^>]+>/g,'').trim();
-      if(!txt || txt==='글을 입력하세요.') return;
+      if(!txt) return;
     }
 
     const div=document.createElement('div');
