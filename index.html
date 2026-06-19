@@ -2877,7 +2877,7 @@ function exportPDF(){
       div.appendChild(imgEl);
     } else {
       const cp=makeContentEl(pg,i).cloneNode(true);
-      cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
+      cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};${pg.bgImage?'':'background:#fff!important'}`;
       cp.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
       cp.querySelectorAll('.pg-sec-badge,.page-label,.no-print').forEach(e=>e.remove());
       div.appendChild(cp);
