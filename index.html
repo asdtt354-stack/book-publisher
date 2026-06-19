@@ -283,12 +283,12 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
       <option value="나눔명조">나눔명조</option>
       <option value="나눔고딕">나눔고딕</option>
     </select>
-    <select class="ts" id="sel-size" onchange="changeFontSize(this.value)">
-      <option value="9">9pt</option>
-      <option value="10" selected>10pt</option>
-      <option value="10.5">10.5pt</option>
-      <option value="11">11pt</option>
-      <option value="12">12pt</option>
+    <select class="ts" id="sel-size" onchange="changeFontSize(this.value)" title="전체 기본 글자 크기">
+      <option value="9">전체 9pt</option>
+      <option value="10" selected>전체 10pt</option>
+      <option value="10.5">전체 10.5pt</option>
+      <option value="11">전체 11pt</option>
+      <option value="12">전체 12pt</option>
     </select>
     <select class="ts" id="sel-lh" onchange="changeLineHeight(this.value)">
       <option value="1.6">행간 1.6</option>
@@ -314,16 +314,16 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
         style="width:22px;height:22px;border:none;background:none;cursor:pointer;padding:0"
         oninput="document.execCommand('hiliteColor',false,this.value)">
     </button>
-    <select class="ts" id="sel-txt-size" onchange="setTextSize(this.value)" title="선택 글자 크기">
-      <option value="">크기</option>
-      <option value="12pt">12pt</option>
-      <option value="14pt">14pt</option>
-      <option value="16pt">16pt</option>
-      <option value="18pt">18pt</option>
-      <option value="24pt">24pt</option>
-      <option value="30pt">30pt</option>
-      <option value="36pt">36pt</option>
-      <option value="48pt">48pt</option>
+    <select class="ts" id="sel-txt-size" onchange="setTextSize(this.value)" title="선택한 글자만 크기 변경">
+      <option value="">선택글자 크기</option>
+      <option value="12pt">선택 12pt</option>
+      <option value="14pt">선택 14pt</option>
+      <option value="16pt">선택 16pt</option>
+      <option value="18pt">선택 18pt</option>
+      <option value="24pt">선택 24pt</option>
+      <option value="30pt">선택 30pt</option>
+      <option value="36pt">선택 36pt</option>
+      <option value="48pt">선택 48pt</option>
     </select>
     <button class="tb" onclick="insertImage()" title="이미지 삽입">🖼 이미지</button>
     <button class="tb" onclick="insertFullImage()" title="페이지 전체 채우기 이미지">🖼 전체채우기</button>
