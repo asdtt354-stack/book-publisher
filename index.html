@@ -237,13 +237,13 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   #print-wrap{display:block!important;background:#fff!important}
   body{background:#fff!important}
   @page{margin:0}
-  .print-pg{page-break-after:always;position:relative;background:#fff!important}
+  .print-pg{page-break-after:always;page-break-inside:avoid;position:relative;background:#fff!important}
+  .print-pg:last-child{page-break-after:avoid!important}
   .pg-sec-badge,.page-label{display:none!important}
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .cover-title,.cover-subtitle,.cover-pub,.cover-bottom{color:#fff!important}
   .book-cover,.book-backcover{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .no-print{display:none!important}
-  .print-pg:not(:has(*:not(:empty))):empty{display:none!important}
 }
 </style>
 </head>
@@ -2999,7 +2999,7 @@ function exportPDF(){
 
   let style=document.getElementById('print-style');
   if(!style){ style=document.createElement('style'); style.id='print-style'; document.head.appendChild(style); }
-  style.textContent=`@media print{@page{size:${pw}mm ${ph}mm portrait;margin:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
+  style.textContent=`@media print{@page{size:${pw}mm ${ph}mm portrait;margin:0}body{margin:0;padding:0}#print-wrap{margin:0;padding:0}.print-pg{display:block;margin:0;padding:0}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}`;
 
   setTimeout(()=>{ window.print(); setTimeout(()=>{ pw2.style.display='none'; pw2.innerHTML=''; }, 500); }, 300);
   notify('인쇄 창을 열었습니다. PDF로 저장하려면 "PDF로 저장"을 선택하세요.');
