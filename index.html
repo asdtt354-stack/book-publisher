@@ -241,6 +241,8 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
   .cover-title,.cover-subtitle,.cover-pub,.cover-bottom{color:#fff!important}
   .book-cover,.book-backcover{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+  .no-print{display:none!important}
+  .print-pg:not(:has(*:not(:empty))):empty{display:none!important}
 }
 </style>
 </head>
@@ -1342,6 +1344,7 @@ function makeContentEl(pg, i){
     // Add remove button overlay
     const rmBtn=document.createElement('div');
     rmBtn.style.cssText='position:absolute;top:4px;right:4px;z-index:10;background:rgba(233,69,96,.85);color:#fff;font-size:10px;padding:2px 7px;border-radius:3px;cursor:pointer;';
+    rmBtn.className='no-print';
     rmBtn.textContent='✕ 배경 제거';
     rmBtn.onclick=(e)=>{ e.stopPropagation(); pg.bgImage=null; S.dirty=true; const canvasEl=document.getElementById('canvas'); const wrap2=canvasEl.querySelector(`[data-pgi="${i}"]`); if(wrap2){const old2=wrap2.querySelector('.book-page'); if(old2) old2.replaceWith(makeContentEl(pg,i));} notify('배경 이미지 제거됨'); };
     el.appendChild(rmBtn);
@@ -2847,6 +2850,9 @@ function exportPDF(){
 
   // Build print pages
   S.pages.forEach((pg,i)=>{
+    // 빈 본문 페이지는 PDF에서 건너뜀
+    if(pg.type==='content' && !pg.bgImage && (!pg.content || pg.content.replace(/<[^>]+>/g,'').trim()==='')) return;
+
     const div=document.createElement('div');
     div.className='print-pg';
     div.style.cssText=`width:${mm(pw)};height:${mm(ph)};position:relative;overflow:hidden;background:#fff`;
@@ -2867,7 +2873,7 @@ function exportPDF(){
       const cp=makeContentEl(pg,i).cloneNode(true);
       cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
       cp.querySelectorAll('[contenteditable]').forEach(e=>e.removeAttribute('contenteditable'));
-      cp.querySelectorAll('.pg-sec-badge,.page-label').forEach(e=>e.remove());
+      cp.querySelectorAll('.pg-sec-badge,.page-label,.no-print').forEach(e=>e.remove());
       div.appendChild(cp);
     }
 
