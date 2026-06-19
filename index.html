@@ -2944,9 +2944,10 @@ function exportPDF(){
         inner.style.backgroundImage=`url("${cv2.bgImage}")`;
         inner.style.backgroundSize='cover';
         inner.style.backgroundPosition='center';
+        inner.style.filter='brightness(1.2)';
         // 오버레이
         const ov=document.createElement('div');
-        ov.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,.45)';
+        ov.style.cssText='position:absolute;inset:0;background:rgba(0,0,0,.45);filter:none';
         inner.appendChild(ov);
       }
       // 텍스트
@@ -3025,6 +3026,7 @@ function exportPDF(){
         cp.style.backgroundImage=`url("${pg.bgImage}")`;
         cp.style.backgroundSize='cover';
         cp.style.backgroundPosition='center';
+        cp.style.filter='brightness(1.2)';
       }
 
       // 텍스트 콘텐츠
