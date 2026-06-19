@@ -2287,25 +2287,29 @@ function insertQRCode(){
   if(!cont){ closeModal('modal-qr'); return; }
 
   const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=4`;
+
+  // 오른쪽 하단 고정 위치로 삽입
   const fig=document.createElement('figure');
-  fig.style.cssText='display:inline-block;text-align:center;margin:8pt auto';
+  fig.style.cssText='position:absolute;bottom:8mm;right:8mm;text-align:center;margin:0;z-index:5;background:rgba(255,255,255,0.85);padding:4px;border-radius:4px';
   const img=document.createElement('img');
   img.src=qrUrl;
-  img.style.cssText=`width:${size}px;height:${size}px;display:block;border:1px solid #ddd`;
+  img.style.cssText=`width:${size}px;height:${size}px;display:block`;
   img.alt='QR코드';
   fig.appendChild(img);
   if(caption){
     const cap=document.createElement('figcaption');
-    cap.style.cssText='font-size:8pt;color:#555;margin-top:3pt;text-align:center';
+    cap.style.cssText='font-size:7pt;color:#333;margin-top:2pt;text-align:center';
     cap.textContent=caption;
     fig.appendChild(cap);
   }
-  cont.appendChild(fig);
-  S.pages[S.curPage].content=cont.innerHTML;
+  // pg-content 부모인 book-page에 붙임 (절대위치라 page 기준)
+  const page=wrap.querySelector('.book-page')||wrap;
+  page.appendChild(fig);
+  // 저장은 content에 기록
+  S.pages[S.curPage].content=(S.pages[S.curPage].content||'') + fig.outerHTML;
   S.dirty=true;
-  onContentChange(S.curPage);
   closeModal('modal-qr');
-  notify('QR코드 삽입 완료!');
+  notify('QR코드 오른쪽 하단에 삽입 완료!');
 }
 
 // ── Keydown handler ────────────────────────────────
