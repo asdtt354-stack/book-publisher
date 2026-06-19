@@ -322,6 +322,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     </select>
     <button class="tb" onclick="insertImage()" title="이미지 삽입">🖼 이미지</button>
     <button class="tb" onclick="insertFullImage()" title="페이지 전체 채우기 이미지">🖼 전체채우기</button>
+    <button class="tb" onclick="bulkImageUpload()" title="이미지 여러 장 한꺼번에 업로드" style="color:#7acc7a">🖼 일괄업로드</button>
     <button class="tb" onclick="openModal('modal-table')" title="표 삽입">⊞ 표</button>
   </div>
   <div class="tg">
@@ -839,11 +840,57 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   </div>
 </div>
 
+<!-- Modal: 이미지 일괄 업로드 -->
+<div class="modal" id="modal-bulk-img">
+<div class="mbox" style="max-width:460px">
+  <div class="mtitle">🖼 이미지 일괄 업로드</div>
+  <button class="mclose" onclick="closeModal('modal-bulk-img')">✕</button>
+  <div id="bulk-img-count" style="font-size:12px;color:#7acc7a;margin-bottom:14px"></div>
+  <div class="rp-ttl" style="margin-bottom:10px">페이지 배치 방식</div>
+  <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:16px">
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:6px;border:1px solid #333;cursor:pointer;background:rgba(255,255,255,.03)" id="bulk-opt-1">
+      <input type="radio" name="bulk-mode" value="img-text" checked style="accent-color:var(--acc);margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:bold;color:#eaeaea">그림 → 글 순서</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">그림 페이지 다음에 빈 글 페이지 자동 생성 (그림책 기본)</div>
+      </div>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:6px;border:1px solid #333;cursor:pointer;background:rgba(255,255,255,.03)" id="bulk-opt-2">
+      <input type="radio" name="bulk-mode" value="text-img" style="accent-color:var(--acc);margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:bold;color:#eaeaea">글 → 그림 순서</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">빈 글 페이지 먼저, 그림 페이지 나중</div>
+      </div>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:6px;border:1px solid #333;cursor:pointer;background:rgba(255,255,255,.03)" id="bulk-opt-3">
+      <input type="radio" name="bulk-mode" value="img-only" style="accent-color:var(--acc);margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:bold;color:#eaeaea">그림만 연속</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">글 페이지 없이 그림만 페이지마다 배치</div>
+      </div>
+    </label>
+    <label style="display:flex;align-items:flex-start;gap:10px;padding:10px;border-radius:6px;border:1px solid #333;cursor:pointer;background:rgba(255,255,255,.03)" id="bulk-opt-4">
+      <input type="radio" name="bulk-mode" value="img-inline" style="accent-color:var(--acc);margin-top:2px;flex-shrink:0">
+      <div>
+        <div style="font-size:12px;font-weight:bold;color:#eaeaea">그림+글 한 페이지에</div>
+        <div style="font-size:10px;color:#888;margin-top:2px">그림 삽입 후 같은 페이지에 글 입력 가능</div>
+      </div>
+    </label>
+  </div>
+  <div style="font-size:11px;color:#666;margin-bottom:14px">※ 현재 선택된 페이지 다음부터 순서대로 삽입됩니다</div>
+  <div class="btnrow">
+    <button class="btn-s" onclick="closeModal('modal-bulk-img')">취소</button>
+    <button class="btn-p" onclick="applyBulkImages()">적용</button>
+  </div>
+</div>
+</div>
+
 <!-- Notification -->
 <div id="notif"></div>
 
 <!-- Hidden inputs -->
 <input type="file" id="img-inp" accept="image/*" style="display:none" onchange="onImageSelected(event)">
+<input type="file" id="bulk-img-inp" accept="image/*" multiple style="display:none" onchange="onBulkImagesSelected(event)">
 <input type="file" id="prj-inp" accept=".bookpub,.json" style="display:none" onchange="onProjectLoaded(event)">
 <div id="print-wrap" style="display:none"></div>
 
@@ -1797,6 +1844,64 @@ function insertFullImage(){
   document.getElementById('img-inp').click();
 }
 let imgInsertFull=false;
+let bulkImageFiles=[];
+
+function bulkImageUpload(){
+  document.getElementById('bulk-img-inp').click();
+}
+function onBulkImagesSelected(e){
+  const files=[...e.target.files];
+  if(!files.length) return;
+  bulkImageFiles=files;
+  document.getElementById('bulk-img-count').textContent=`📂 ${files.length}장 선택됨 — 현재 페이지(${S.curPage+1}p) 다음부터 삽입`;
+  openModal('modal-bulk-img');
+  e.target.value='';
+}
+async function applyBulkImages(){
+  const mode=document.querySelector('input[name="bulk-mode"]:checked').value;
+  closeModal('modal-bulk-img');
+
+  let insertAt=S.curPage+1;
+  // 백커버/속지 앞에 삽입되도록 조정
+  const newPages=[];
+
+  for(let i=0;i<bulkImageFiles.length;i++){
+    const src=await readFileAsDataURL(bulkImageFiles[i]);
+    const sec=(S.pages[S.curPage]&&S.pages[S.curPage].section)||'body';
+
+    if(mode==='img-text'){
+      // 그림 페이지
+      newPages.push({id:uid(),type:'content',section:sec,content:'',bgImage:src});
+      // 빈 글 페이지
+      newPages.push({id:uid(),type:'content',section:sec,content:'<p>글을 입력하세요.</p>'});
+    } else if(mode==='text-img'){
+      // 빈 글 페이지 먼저
+      newPages.push({id:uid(),type:'content',section:sec,content:'<p>글을 입력하세요.</p>'});
+      // 그림 페이지
+      newPages.push({id:uid(),type:'content',section:sec,content:'',bgImage:src});
+    } else if(mode==='img-only'){
+      // 그림만
+      newPages.push({id:uid(),type:'content',section:sec,content:'',bgImage:src});
+    } else if(mode==='img-inline'){
+      // 그림+글 한 페이지 (그림을 content 안에 figure로)
+      const pg={id:uid(),type:'content',section:sec,content:'',bgImage:src};
+      newPages.push(pg);
+    }
+  }
+
+  S.pages.splice(insertAt, 0, ...newPages);
+  renderAll();
+  selectPage(insertAt, true);
+  notify(`✅ ${bulkImageFiles.length}장 일괄 삽입 완료! (${newPages.length}페이지 생성)`);
+  bulkImageFiles=[];
+}
+function readFileAsDataURL(file){
+  return new Promise(res=>{
+    const r=new FileReader();
+    r.onload=e=>res(e.target.result);
+    r.readAsDataURL(file);
+  });
+}
 function onImageSelected(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
