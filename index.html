@@ -297,6 +297,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <button class="tb icon" onclick="insertHeading(2)" title="제목2">H2</button>
     <button class="tb icon" onclick="insertHeading(3)" title="제목3">H3</button>
     <button class="tb" onclick="insertImage()" title="이미지 삽입">🖼 이미지</button>
+    <button class="tb" onclick="insertFullImage()" title="페이지 전체 채우기 이미지">🖼 전체채우기</button>
     <button class="tb" onclick="openModal('modal-table')" title="표 삽입">⊞ 표</button>
   </div>
   <div class="tg">
@@ -957,6 +958,18 @@ function makeContentEl(pg, i){
   const el=document.createElement('div');
   el.className='book-page'; el.dataset.pgi=i;
   el.style.cssText=`width:${mm(w)};height:${mm(h)};position:relative;background:#fff`;
+  // Full-page background image
+  if(pg.bgImage){
+    el.style.backgroundImage=`url("${pg.bgImage}")`;
+    el.style.backgroundSize='cover';
+    el.style.backgroundPosition='center';
+    // Add remove button overlay
+    const rmBtn=document.createElement('div');
+    rmBtn.style.cssText='position:absolute;top:4px;right:4px;z-index:10;background:rgba(233,69,96,.85);color:#fff;font-size:10px;padding:2px 7px;border-radius:3px;cursor:pointer;';
+    rmBtn.textContent='✕ 배경 제거';
+    rmBtn.onclick=(e)=>{ e.stopPropagation(); pg.bgImage=null; S.dirty=true; const canvasEl=document.getElementById('canvas'); const wrap2=canvasEl.querySelector(`[data-pgi="${i}"]`); if(wrap2){const old2=wrap2.querySelector('.book-page'); if(old2) old2.replaceWith(makeContentEl(pg,i));} notify('배경 이미지 제거됨'); };
+    el.appendChild(rmBtn);
+  }
   el.addEventListener('click',()=>selectPage(i));
 
   // Odd/even
@@ -1662,14 +1675,44 @@ function insertHeading(level){
 let imgInsertPage=-1;
 function insertImage(){
   imgInsertPage=S.curPage;
+  imgInsertFull=false;
   document.getElementById('img-inp').click();
 }
+function insertFullImage(){
+  imgInsertPage=S.curPage;
+  imgInsertFull=true;
+  document.getElementById('img-inp').click();
+}
+let imgInsertFull=false;
 function onImageSelected(e){
   const file=e.target.files[0]; if(!file) return;
   const reader=new FileReader();
-  reader.onload=ev=>{ insertImageData(ev.target.result, imgInsertPage); };
+  reader.onload=ev=>{ 
+    if(imgInsertFull) insertFullImageData(ev.target.result, imgInsertPage);
+    else insertImageData(ev.target.result, imgInsertPage); 
+  };
   reader.readAsDataURL(file);
   e.target.value='';
+}
+function insertFullImageData(src, i){
+  const pg=S.pages[i];
+  if(!pg) return;
+  // Store as page background
+  pg.bgImage=src;
+  S.dirty=true;
+  // Re-render this page
+  const canvasEl=document.getElementById('canvas');
+  const wrap=canvasEl.querySelector(`[data-pgi="${i}"]`);
+  if(wrap){
+    const old=wrap.querySelector('.book-page');
+    if(old){
+      if(pg.type==='content'){
+        const newEl=makeContentEl(pg,i);
+        old.replaceWith(newEl);
+      }
+    }
+  }
+  notify('전체 배경 이미지 삽입됨! 다시 클릭하면 제거');
 }
 function insertImageData(src, i){
   const wrap=pageEl(i);
