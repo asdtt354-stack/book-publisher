@@ -2866,9 +2866,14 @@ function exportPDF(){
       bc.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
       div.appendChild(bc);
     } else if(pg.type==='endpaper'){
-      const ep=makeEndpaperEl(i).cloneNode(true);
-      ep.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
-      div.appendChild(ep);
+      const ep=makeEndpaperEl(i);
+      // canvas → 이미지로 변환해서 삽입
+      const cv=ep.querySelector('canvas');
+      const imgEl=document.createElement('img');
+      imgEl.src=cv?cv.toDataURL():'';
+      imgEl.style.cssText=`position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)};object-fit:cover`;
+      div.style.background=S.endpaper.color||'#f5f0e8';
+      div.appendChild(imgEl);
     } else {
       const cp=makeContentEl(pg,i).cloneNode(true);
       cp.style.cssText+=`;position:absolute;top:${mm(bleed)};left:${mm(bleed)};width:${mm(w)};height:${mm(h)}`;
