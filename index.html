@@ -345,6 +345,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   <div class="tg">
     <button class="tb" onclick="exportPDF()">PDF 출력</button>
     <button class="tb" onclick="openModal('modal-publish-guide')">출판 안내</button>
+    <button class="tb" onclick="openModal('modal-guide')" style="color:#f0c040">❓ 사용 가이드</button>
     <button class="tb on" onclick="toggleAI()">AI ✦</button>
   </div>
 </div>
@@ -890,6 +891,194 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   <div class="btnrow">
     <button class="btn-s" onclick="closeModal('modal-bulk-img')">취소</button>
     <button class="btn-p" onclick="applyBulkImages()">적용</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal: 사용 가이드 -->
+<div class="modal" id="modal-guide">
+<div class="mbox wide" style="max-width:600px">
+  <div class="mtitle">❓ 사용 가이드 — 책 편집기</div>
+  <button class="mclose" onclick="closeModal('modal-guide')">✕</button>
+
+  <div style="display:flex;gap:6px;margin-bottom:14px;flex-wrap:wrap">
+    <button class="btn-s" onclick="showGuide('basic')" id="gtab-basic" style="border-color:var(--acc);color:var(--acc)">① 기본 설정</button>
+    <button class="btn-s" onclick="showGuide('page')" id="gtab-page">② 페이지</button>
+    <button class="btn-s" onclick="showGuide('text')" id="gtab-text">③ 텍스트</button>
+    <button class="btn-s" onclick="showGuide('image')" id="gtab-image">④ 이미지</button>
+    <button class="btn-s" onclick="showGuide('cover')" id="gtab-cover">⑤ 표지</button>
+    <button class="btn-s" onclick="showGuide('save')" id="gtab-save">⑥ 저장/출력</button>
+  </div>
+
+  <!-- ① 기본 설정 -->
+  <div id="guide-basic">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">판형 선택</div>
+        <div class="pub-step-desc">상단 드롭다운에서 B5·A5·A4 등 선택. 그림책은 <strong style="color:#eaeaea">사용자 정의 → 297×210</strong> (A4 가로)를 추천해요.</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">폰트 / 크기 / 행간</div>
+        <div class="pub-step-desc">
+          <strong style="color:#eaeaea">전체 크기</strong> — 페이지 전체 기본 글자 크기 조정<br>
+          <strong style="color:#eaeaea">선택글자 크기</strong> — 드래그한 텍스트만 크기 변경<br>
+          행간: 1.6~2.2 중 선택 (그림책은 1.8~2.0 추천)
+        </div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">책 제목 입력</div>
+        <div class="pub-step-desc">툴바 왼쪽 입력란에 책 제목을 입력하면 저장 시 해당 이름으로 파일이 저장돼요.</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ② 페이지 -->
+  <div id="guide-page" style="display:none">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">페이지 추가 / 삭제 / 이동</div>
+        <div class="pub-step-desc">오른쪽 패널 <strong style="color:#eaeaea">페이지 작업</strong>에서:<br>
+        + 빈 페이지 추가 / + 속지 페이지 추가 / × 삭제 / ↑↓ 순서 이동</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">속지 패턴</div>
+        <div class="pub-step-desc">상단 <strong style="color:#eaeaea">속지</strong> 버튼 → 패턴(도트·격자·물결 등)과 색상 선택 → 적용</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">페이지 번호 섹션</div>
+        <div class="pub-step-desc">오른쪽 패널에서 섹션 설정:<br>
+        <strong style="color:#eaeaea">본문</strong> (1,2,3…) / <strong style="color:#eaeaea">서문</strong> (i,ii,iii…) / <strong style="color:#eaeaea">번호 없음</strong></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ③ 텍스트 -->
+  <div id="guide-text" style="display:none">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">제목 스타일</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">H1</strong> 가장 큰 제목 / <strong style="color:#eaeaea">H2</strong> 중간 제목 / <strong style="color:#eaeaea">H3</strong> 소제목<br>커서를 줄에 놓고 H1~H3 클릭하면 적용돼요.</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">텍스트 꾸미기</div>
+        <div class="pub-step-desc">텍스트 드래그 후:<br>
+        <strong style="color:#eaeaea">B</strong> 굵게 / <strong style="color:#eaeaea">I</strong> 기울임 / <strong style="color:#eaeaea">U</strong> 밑줄<br>
+        🎨 글자 색상 / 🖌 형광펜 배경색<br>
+        ≡← 왼쪽 / ≡ 가운데 / ≡→ 오른쪽 정렬</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">머리글/꼬리글</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">마스터</strong> 버튼 → 책 제목·페이지 번호 자동 삽입 설정<br>변수: <code style="color:#7acc7a">{{페이지}}</code> <code style="color:#7acc7a">{{제목}}</code></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ④ 이미지 -->
+  <div id="guide-image" style="display:none">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">🖼 이미지 — 본문 삽입</div>
+        <div class="pub-step-desc">이미지를 본문 안에 삽입. 클릭하면 왼쪽/오른쪽 정렬 전환 가능.</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">🖼 전체채우기 — 배경 이미지</div>
+        <div class="pub-step-desc">이미지가 페이지 전체를 꽉 채워요. 그림책 장면에 적합!<br>페이지 오른쪽 위 <strong style="color:#eaeaea">✕ 배경 제거</strong>로 삭제 가능.</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">🖼 일괄업로드 — 여러 장 한꺼번에</div>
+        <div class="pub-step-desc">이미지 여러 장 선택 후 배치 방식 선택:<br>
+        그림→글 / 글→그림 / 그림만 / 그림+글 한 페이지</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">4</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">📱 QR코드 삽입</div>
+        <div class="pub-step-desc">YouTube·Google Photos URL 입력 → QR코드 자동 생성 삽입<br>인쇄된 책에서 스캔하면 영상 바로 재생!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑤ 표지 -->
+  <div id="guide-cover" style="display:none">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">앞표지 디자인</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">앞표지</strong> 버튼 → 제목·부제목·저자·출판사 입력<br>배경색 또는 이미지 업로드 / Gemini AI로 표지 이미지 자동 생성!</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">뒤표지 디자인</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">뒤표지</strong> 버튼 → 책 소개문·저자 소개·ISBN·정가 입력<br>책등 너비 자동 계산 / 펼침 보기로 전체 확인 가능</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">목차 자동 생성</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">목차</strong> 버튼 → 본문의 H1·H2·H3 제목을 자동으로 수집해서 목차 페이지 생성!</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ⑥ 저장/출력 -->
+  <div id="guide-save" style="display:none">
+    <div class="pub-step">
+      <div class="pub-step-num">1</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">파일 저장 / 불러오기</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">저장</strong> → <code style="color:#7acc7a">책제목.bookpub</code> 파일로 내 PC에 저장<br><strong style="color:#eaeaea">열기</strong> → 저장한 파일 불러오기<br>💡 선생님마다 본인 파일명으로 저장하면 서로 안 겹쳐요!</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">2</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">PDF 출력</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">PDF 출력</strong> 버튼 → 인쇄 창에서 <strong style="color:#eaeaea">"PDF로 저장"</strong> 선택<br>도련(3mm) 포함, 재단선 자동 표시<br>부크크 업로드용 PDF로 바로 사용 가능!</div>
+      </div>
+    </div>
+    <div class="pub-step">
+      <div class="pub-step-num">3</div>
+      <div class="pub-step-body">
+        <div class="pub-step-title">출판 안내</div>
+        <div class="pub-step-desc"><strong style="color:#eaeaea">출판 안내</strong> 버튼 → 부크크(사업자 불필요) 또는 전통 출판사 등록 방법 안내<br>ISBN 발급부터 POD 인쇄까지 4단계로 정리!</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="btnrow" style="margin-top:18px">
+    <button class="btn-s" onclick="closeModal('modal-guide')">닫기</button>
   </div>
 </div>
 </div>
@@ -2550,6 +2739,16 @@ function switchPubTab(tab){
   document.getElementById('pub-tab-trad').style.cssText = isBookk
     ?'flex:1;padding:8px;font-size:12px;background:transparent;border:none;color:#888;border-radius:0 4px 0 0;cursor:pointer'
     :'flex:1;padding:8px;font-size:12px;font-weight:bold;background:#1a2a40;border:none;color:#6ab0cc;border-radius:0 4px 0 0;cursor:pointer';
+}
+function showGuide(tab){
+  ['basic','page','text','image','cover','save'].forEach(t=>{
+    document.getElementById('guide-'+t).style.display = t===tab?'block':'none';
+    const btn=document.getElementById('gtab-'+t);
+    if(btn){
+      btn.style.borderColor = t===tab?'var(--acc)':'#444';
+      btn.style.color = t===tab?'var(--acc)':'#aaa';
+    }
+  });
 }
 
 // ── Save / Load ────────────────────────────────────
