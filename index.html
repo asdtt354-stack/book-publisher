@@ -331,6 +331,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <button class="tb" onclick="insertImage()" title="이미지 삽입">🖼 이미지</button>
     <button class="tb" onclick="insertFullImage()" title="페이지 전체 채우기 이미지">🖼 전체채우기</button>
     <button class="tb" onclick="bulkImageUpload()" title="이미지 여러 장 한꺼번에 업로드" style="color:#7acc7a">🖼 일괄업로드</button>
+    <button class="tb" onclick="openQRModal()" title="QR코드 삽입">📱 QR</button>
     <button class="tb" onclick="openModal('modal-table')" title="표 삽입">⊞ 표</button>
   </div>
   <div class="tg">
@@ -889,6 +890,38 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   <div class="btnrow">
     <button class="btn-s" onclick="closeModal('modal-bulk-img')">취소</button>
     <button class="btn-p" onclick="applyBulkImages()">적용</button>
+  </div>
+</div>
+</div>
+
+<!-- Modal: QR코드 삽입 -->
+<div class="modal" id="modal-qr">
+<div class="mbox" style="max-width:420px">
+  <div class="mtitle">📱 QR코드 삽입</div>
+  <button class="mclose" onclick="closeModal('modal-qr')">✕</button>
+  <div class="fg">
+    <label>연결할 URL (YouTube, Google Photos 등)</label>
+    <input id="qr-url" placeholder="https://youtube.com/..." oninput="previewQR()">
+  </div>
+  <div class="fg">
+    <label>QR코드 크기</label>
+    <select id="qr-size" onchange="previewQR()">
+      <option value="80">작게 (80px)</option>
+      <option value="120" selected>보통 (120px)</option>
+      <option value="160">크게 (160px)</option>
+      <option value="200">아주 크게 (200px)</option>
+    </select>
+  </div>
+  <div class="fg">
+    <label>설명 텍스트 (선택)</label>
+    <input id="qr-caption" placeholder="▶ 공연 영상 보기" value="▶ 공연 영상 보기">
+  </div>
+  <div style="text-align:center;margin:14px 0">
+    <div id="qr-preview" style="display:inline-block;padding:10px;background:#fff;border-radius:6px;border:1px solid #333"></div>
+  </div>
+  <div class="btnrow">
+    <button class="btn-s" onclick="closeModal('modal-qr')">취소</button>
+    <button class="btn-p" onclick="insertQRCode()">페이지에 삽입</button>
   </div>
 </div>
 </div>
@@ -1962,6 +1995,52 @@ function insertImageData(src, i){
   S.dirty=true;
   onContentChange(i);
   notify('이미지 삽입됨 (클릭하여 정렬 전환)');
+}
+
+// ── QR Code ────────────────────────────────────────
+function openQRModal(){
+  document.getElementById('qr-url').value='';
+  document.getElementById('qr-preview').innerHTML='<div style="width:120px;height:120px;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px">URL 입력 후<br>미리보기</div>';
+  openModal('modal-qr');
+}
+function previewQR(){
+  const url=document.getElementById('qr-url').value.trim();
+  const size=document.getElementById('qr-size').value;
+  const preview=document.getElementById('qr-preview');
+  if(!url){ preview.innerHTML=`<div style="width:${size}px;height:${size}px;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px">URL 입력 후<br>미리보기</div>`; return; }
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=4`;
+  preview.innerHTML=`<img src="${qrUrl}" style="width:${size}px;height:${size}px;display:block">`;
+}
+function insertQRCode(){
+  const url=document.getElementById('qr-url').value.trim();
+  const size=document.getElementById('qr-size').value;
+  const caption=document.getElementById('qr-caption').value.trim();
+  if(!url){ notify('URL을 입력해주세요'); return; }
+
+  const wrap=pageEl(S.curPage);
+  const cont=wrap?wrap.querySelector('.pg-content'):null;
+  if(!cont){ closeModal('modal-qr'); return; }
+
+  const qrUrl=`https://api.qrserver.com/v1/create-qr-code/?size=${size}x${size}&data=${encodeURIComponent(url)}&bgcolor=ffffff&color=000000&margin=4`;
+  const fig=document.createElement('figure');
+  fig.style.cssText='display:inline-block;text-align:center;margin:8pt auto';
+  const img=document.createElement('img');
+  img.src=qrUrl;
+  img.style.cssText=`width:${size}px;height:${size}px;display:block;border:1px solid #ddd`;
+  img.alt='QR코드';
+  fig.appendChild(img);
+  if(caption){
+    const cap=document.createElement('figcaption');
+    cap.style.cssText='font-size:8pt;color:#555;margin-top:3pt;text-align:center';
+    cap.textContent=caption;
+    fig.appendChild(cap);
+  }
+  cont.appendChild(fig);
+  S.pages[S.curPage].content=cont.innerHTML;
+  S.dirty=true;
+  onContentChange(S.curPage);
+  closeModal('modal-qr');
+  notify('QR코드 삽입 완료!');
 }
 
 // ── Keydown handler ────────────────────────────────
