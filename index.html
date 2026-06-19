@@ -248,6 +248,11 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 <!-- TOOLBAR -->
 <div id="toolbar">
   <span id="app-title">📖 책 편집기</span>
+  <input id="project-name-inp" value="새 책"
+    style="background:transparent;border:none;border-bottom:1px solid #444;color:var(--acc);font-size:13px;font-weight:bold;width:160px;padding:2px 4px;outline:none;margin-right:6px"
+    placeholder="책 제목 입력"
+    oninput="S.projectName=this.value.trim()||'새 책'; S.dirty=true;"
+    title="파일 저장 이름">
   <div class="tg">
     <button class="tb" onclick="newProject()">새 파일</button>
     <button class="tb" onclick="saveProject()">저장</button>
@@ -950,6 +955,10 @@ function init(){
   // Load saved API key
   S.aiKey = localStorage.getItem('bp_gemini_key') || '';
   if(S.aiKey) document.getElementById('ai-key-inp').value = S.aiKey;
+
+  // Sync project name input
+  const pni=document.getElementById('project-name-inp');
+  if(pni) pni.value=S.projectName||'새 책';
 
   buildPatternPicker();
   buildChecklist();
@@ -2518,6 +2527,8 @@ function onProjectLoaded(e){
       document.getElementById('m-ftr').value=S.margins.ftr;
       renderAll(); selectPage(0); updateStatus();
       notify('프로젝트 불러오기 완료: '+S.projectName);
+      const pni=document.getElementById('project-name-inp');
+      if(pni) pni.value=S.projectName;
     } catch(err){ notify('파일을 읽을 수 없습니다: '+err.message); }
   };
   r.readAsText(file);
