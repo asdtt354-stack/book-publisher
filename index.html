@@ -2851,8 +2851,11 @@ function exportPDF(){
 
   // Build print pages
   S.pages.forEach((pg,i)=>{
-    // 빈 본문 페이지는 PDF에서 건너뜀
-    if(pg.type==='content' && !pg.bgImage && (!pg.content || pg.content.replace(/<[^>]+>/g,'').trim()==='')) return;
+    // 빈 본문 페이지 또는 기본 텍스트만 있는 페이지는 PDF에서 건너뜀
+    if(pg.type==='content' && !pg.bgImage){
+      const textOnly=(pg.content||'').replace(/<[^>]+>/g,'').trim();
+      if(!textOnly || textOnly==='글을 입력하세요.') return;
+    }
 
     const div=document.createElement('div');
     div.className='print-pg';
