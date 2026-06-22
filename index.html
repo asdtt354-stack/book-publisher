@@ -78,6 +78,20 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 .cover-bg{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;z-index:0}
 .cover-overlay{position:absolute;inset:0;background:rgba(0,0,0,.45);z-index:1}
 .cover-body{position:relative;z-index:2;width:100%;height:100%;display:flex;flex-direction:column;padding:18mm 14mm 12mm}
+.cover-style-btn.active{border-color:#C9A84C!important;background:rgba(201,168,76,.2)!important;color:#C9A84C!important}
+/* 클래식: 왼쪽 중앙 (기본) */
+.cover-style-classic .cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:5pt}
+/* 드라마틱: 중앙 크게 */
+.cover-style-dramatic .cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;align-items:center;text-align:center;gap:5pt}
+.cover-style-dramatic .cover-title{font-size:36pt!important}
+/* 영화포스터: 하단 중앙 */
+.cover-style-poster .cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;text-align:center;gap:4pt;padding-bottom:8mm}
+.cover-style-poster .cover-title{font-size:28pt!important}
+/* 에세이: 하단 왼쪽 */
+.cover-style-essay .cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:flex-start;gap:4pt;padding-bottom:6mm}
+.cover-style-essay .cover-title{font-size:22pt!important;font-weight:700!important;letter-spacing:1px}
+/* 상단 중앙 */
+.cover-style-top .cover-title-wrap{flex:0;display:flex;flex-direction:column;justify-content:flex-start;align-items:center;text-align:center;gap:5pt;padding-top:4mm}
 .cover-title-wrap{flex:1;display:flex;flex-direction:column;justify-content:center;gap:5pt}
 .cover-title{font-size:28pt;font-weight:900;line-height:1.2;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.9);letter-spacing:-.3px;word-break:keep-all}
 .cover-subtitle{font-size:11pt;font-weight:400;color:rgba(255,255,255,.92);text-shadow:0 1px 8px rgba(0,0,0,.8);margin-top:3pt;word-break:keep-all}
@@ -451,7 +465,15 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
         <button class="btn-s" style="margin-top:6px;width:100%" onclick="removeCoverImage()">이미지 제거</button>
       </div>
       <div class="fg">
-        <label>AI 표지 이미지 생성</label>
+        <label>제목 스타일</label>
+        <div style="display:flex;flex-wrap:wrap;gap:5px;margin-top:4px">
+          <button class="cover-style-btn active" onclick="selectCoverStyle('classic',this)" style="flex:1;min-width:80px;padding:6px 4px;border-radius:6px;border:1px solid #555;background:rgba(255,255,255,.1);color:#ddd;font-size:11px;cursor:pointer;font-family:inherit">📚 클래식<br><span style="font-size:9px;opacity:.7">왼쪽 중앙</span></button>
+          <button class="cover-style-btn" onclick="selectCoverStyle('dramatic',this)" style="flex:1;min-width:80px;padding:6px 4px;border-radius:6px;border:1px solid #555;background:rgba(255,255,255,.1);color:#ddd;font-size:11px;cursor:pointer;font-family:inherit">🎭 드라마틱<br><span style="font-size:9px;opacity:.7">중앙 크게</span></button>
+          <button class="cover-style-btn" onclick="selectCoverStyle('poster',this)" style="flex:1;min-width:80px;padding:6px 4px;border-radius:6px;border:1px solid #555;background:rgba(255,255,255,.1);color:#ddd;font-size:11px;cursor:pointer;font-family:inherit">🎬 영화포스터<br><span style="font-size:9px;opacity:.7">하단 중앙</span></button>
+          <button class="cover-style-btn" onclick="selectCoverStyle('essay',this)" style="flex:1;min-width:80px;padding:6px 4px;border-radius:6px;border:1px solid #555;background:rgba(255,255,255,.1);color:#ddd;font-size:11px;cursor:pointer;font-family:inherit">✍️ 에세이<br><span style="font-size:9px;opacity:.7">하단 왼쪽</span></button>
+          <button class="cover-style-btn" onclick="selectCoverStyle('top',this)" style="flex:1;min-width:80px;padding:6px 4px;border-radius:6px;border:1px solid #555;background:rgba(255,255,255,.1);color:#ddd;font-size:11px;cursor:pointer;font-family:inherit">📖 클래식2<br><span style="font-size:9px;opacity:.7">상단 중앙</span></button>
+        </div>
+      </div>
         <button class="btn-p" id="cv-ai-btn" onclick="genAICoverImage()" style="width:100%;margin-bottom:5px;background:#4a3fa0;border-color:#4a3fa0">✦ Gemini AI로 표지 이미지 생성</button>
         <div id="cv-ai-status" style="font-size:11px;color:#7acc7a;min-height:16px"></div>
       </div>
@@ -1294,7 +1316,7 @@ function makeCoverEl(i){
   }
 
   const body=document.createElement('div');
-  body.className='cover-body';
+  body.className='cover-body cover-style-'+(cv.titleStyle||'classic');
 
   const tw=document.createElement('div');
   tw.className='cover-title-wrap';
@@ -2422,14 +2444,25 @@ function removeCoverImage(){
   clearCoverPreviewImage();
   document.getElementById('cv-dz').textContent='클릭하여 이미지 업로드 (또는 드래그)';
 }
+function selectCoverStyle(style, btn){
+  // 버튼 활성화
+  document.querySelectorAll('.cover-style-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  S.cover.titleStyle = style;
+  previewCover();
+}
+
 function applyCover(){
+  const styleBtn = document.querySelector('.cover-style-btn.active');
+  const titleStyle = styleBtn ? styleBtn.getAttribute('onclick').match(/'(\w+)'/)?.[1] : 'classic';
   S.cover={
     title:document.getElementById('cv-title').value,
     subtitle:document.getElementById('cv-sub').value,
     author:document.getElementById('cv-author').value,
     publisher:document.getElementById('cv-pub').value,
     bgColor:document.getElementById('cv-color').value,
-    bgImage:coverImageData
+    bgImage:coverImageData,
+    titleStyle: titleStyle
   };
   S.dirty=true;
   // Re-render cover page
