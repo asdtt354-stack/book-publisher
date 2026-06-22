@@ -350,6 +350,7 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
     <button class="tb" onclick="bulkImageUpload()" title="이미지 여러 장 한꺼번에 업로드" style="color:#7acc7a">🖼 일괄업로드</button>
     <button class="tb" onclick="openQRModal()" title="QR코드 삽입">📱 QR</button>
     <button class="tb" onclick="openModal('modal-table')" title="표 삽입">⊞ 표</button>
+    <button class="tb" onclick="openTextEffectModal()" title="글자 효과 (그림자/외곽선)" style="color:#f4a636">✦ 효과</button>
   </div>
   <div class="tg">
     <button class="tb" onclick="openModal('modal-cover')">앞표지</button>
@@ -1109,6 +1110,60 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
 </div>
 
 <!-- Modal: QR코드 삽입 -->
+<div class="modal" id="modal-textfx">
+<div class="mbox">
+  <div class="mtitle">✦ 글자 효과</div>
+  <button class="mclose" onclick="closeModal('modal-textfx')">✕</button>
+  <div style="font-size:11px;color:#aaa;margin-bottom:12px">선택한 글자에 효과를 적용해요</div>
+
+  <!-- 그림자 -->
+  <div style="margin-bottom:14px">
+    <div style="font-size:12px;font-weight:bold;color:#f4a636;margin-bottom:8px">🌑 글자 그림자</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn-s" onclick="applyTextShadow('2px 2px 4px rgba(0,0,0,0.8)')">기본 그림자</button>
+      <button class="btn-s" onclick="applyTextShadow('3px 3px 0px rgba(0,0,0,0.9)')">진한 그림자</button>
+      <button class="btn-s" onclick="applyTextShadow('0 0 10px rgba(255,255,255,0.9)')">빛나는 효과</button>
+      <button class="btn-s" onclick="applyTextShadow('2px 2px 8px rgba(255,100,0,0.8)')">불꽃 효과</button>
+      <button class="btn-s" onclick="applyTextShadow('0 0 15px rgba(100,200,255,0.9)')">파란 빛</button>
+      <button class="btn-s" onclick="applyTextShadow('none')">그림자 제거</button>
+    </div>
+  </div>
+
+  <!-- 외곽선 -->
+  <div style="margin-bottom:14px">
+    <div style="font-size:12px;font-weight:bold;color:#7acc7a;margin-bottom:8px">⬜ 글자 외곽선</div>
+    <div style="display:grid;grid-template-columns:1fr 1fr;gap:6px">
+      <button class="btn-s" onclick="applyTextStroke('1px','#000000')">검정 외곽선(가늘)</button>
+      <button class="btn-s" onclick="applyTextStroke('2px','#000000')">검정 외곽선(굵게)</button>
+      <button class="btn-s" onclick="applyTextStroke('2px','#ffffff')">흰색 외곽선</button>
+      <button class="btn-s" onclick="applyTextStroke('2px','#C9A84C')">금색 외곽선</button>
+      <button class="btn-s" onclick="applyTextStroke('2px','#E94560')">빨간 외곽선</button>
+      <button class="btn-s" onclick="applyTextStroke('0px','transparent')">외곽선 제거</button>
+    </div>
+    <div style="margin-top:8px;display:flex;gap:6px;align-items:center">
+      <span style="font-size:11px;color:#aaa">외곽선 색 직접 선택:</span>
+      <input type="color" id="stroke-color" value="#000000" style="width:30px;height:24px;border:none;background:none;cursor:pointer">
+      <select id="stroke-width" style="flex:1;background:#2a2a2a;color:#eee;border:1px solid #444;border-radius:4px;padding:3px;font-size:11px">
+        <option value="1px">1px (가늘게)</option>
+        <option value="2px" selected>2px (보통)</option>
+        <option value="3px">3px (굵게)</option>
+        <option value="4px">4px (매우 굵게)</option>
+      </select>
+      <button class="btn-s" onclick="applyTextStroke(document.getElementById('stroke-width').value, document.getElementById('stroke-color').value)">적용</button>
+    </div>
+  </div>
+
+  <!-- 미리보기 -->
+  <div style="background:#1a1a1a;border-radius:6px;padding:12px;text-align:center;margin-bottom:12px">
+    <div id="textfx-preview" style="font-size:24px;font-weight:900;color:#fff">미리보기 텍스트</div>
+  </div>
+
+  <div class="btnrow">
+    <button class="btn-s" onclick="closeModal('modal-textfx')">닫기</button>
+  </div>
+</div>
+</div>
+
 <div class="modal" id="modal-qr">
 <div class="mbox" style="max-width:420px">
   <div class="mtitle">📱 QR코드 삽입</div>
@@ -2285,6 +2340,45 @@ function insertImageData(src, i){
 }
 
 // ── QR Code ────────────────────────────────────────
+function openTextEffectModal(){
+  openModal('modal-textfx');
+}
+
+function applyTextShadow(shadow){
+  const sel = window.getSelection();
+  if(!sel || sel.rangeCount===0 || sel.isCollapsed){
+    // 선택 없으면 현재 페이지 전체 텍스트에 적용
+    const cont = document.querySelector('.pg-content:focus') || document.querySelector('.book-page.selected .pg-content');
+    if(cont){ cont.style.textShadow = shadow; }
+    notify('페이지 전체에 그림자 적용됨');
+  } else {
+    document.execCommand('insertHTML', false,
+      `<span style="text-shadow:${shadow}">${sel.toString()}</span>`
+    );
+  }
+  // 미리보기 업데이트
+  document.getElementById('textfx-preview').style.textShadow = shadow;
+}
+
+function applyTextStroke(width, color){
+  const sel = window.getSelection();
+  const strokeStyle = width==='0px' ? 'none' : `${width} ${color}`;
+  if(!sel || sel.rangeCount===0 || sel.isCollapsed){
+    const cont = document.querySelector('.pg-content:focus') || document.querySelector('.book-page.selected .pg-content');
+    if(cont){ cont.style.webkitTextStroke = strokeStyle==='none' ? '0' : `${width} ${color}`; }
+    notify('페이지 전체에 외곽선 적용됨');
+  } else {
+    const wts = width==='0px' ? '' : `-webkit-text-stroke:${width} ${color};paint-order:stroke fill`;
+    document.execCommand('insertHTML', false,
+      `<span style="${wts}">${sel.toString()}</span>`
+    );
+  }
+  // 미리보기 업데이트
+  const preview = document.getElementById('textfx-preview');
+  if(width==='0px'){ preview.style.webkitTextStroke='0'; }
+  else { preview.style.webkitTextStroke=`${width} ${color}`; }
+}
+
 function openQRModal(){
   document.getElementById('qr-url').value='';
   document.getElementById('qr-preview').innerHTML='<div style="width:120px;height:120px;display:flex;align-items:center;justify-content:center;color:#666;font-size:11px">URL 입력 후<br>미리보기</div>';
