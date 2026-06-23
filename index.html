@@ -316,6 +316,8 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
   </div>
   <div class="tg">
     <button class="tb icon" onclick="insertHeading(1)" title="제목1">H1</button>
+    <button class="tb icon" onclick="undoAction()" title="되돌리기 (Ctrl+Z)" id="btn-undo" style="opacity:.4">↩</button>
+    <button class="tb icon" onclick="redoAction()" title="다시실행 (Ctrl+Y)" id="btn-redo" style="opacity:.4">↪</button>
     <button class="tb icon" onclick="insertHeading(2)" title="제목2">H2</button>
     <button class="tb icon" onclick="insertHeading(3)" title="제목3">H3</button>
     <button class="tb icon" onclick="document.execCommand('bold')" title="굵게"><b>B</b></button>
@@ -1255,6 +1257,93 @@ const S = {
   dirty:false
 };
 
+
+// ══════════════════════════════════════
+// ↩ 되돌리기 / ↪ 다시실행 시스템
+// ══════════════════════════════════════
+const undoStack = [];
+const redoStack = [];
+const MAX_UNDO = 30;
+let _undoPaused = false;
+
+function snapshotState(){
+  if(_undoPaused) return;
+  try {
+    const snap = JSON.stringify({
+      pages: S.pages.map(p=>({...p})),
+      cover: {...S.cover},
+      backCover: {...S.backCover},
+      endpaper: {...S.endpaper},
+      font: {...S.font},
+      format: S.format,
+      projectName: S.projectName
+    });
+    // 같은 상태면 저장 안 함
+    if(undoStack.length>0 && undoStack[undoStack.length-1]===snap) return;
+    undoStack.push(snap);
+    if(undoStack.length>MAX_UNDO) undoStack.shift();
+    redoStack.length=0; // 새 작업하면 다시실행 스택 초기화
+    updateUndoButtons();
+  } catch(e){}
+}
+
+function undoAction(){
+  if(undoStack.length<=1){ notify('더 이상 되돌릴 수 없어요'); return; }
+  const current = undoStack.pop();
+  redoStack.push(current);
+  const prev = undoStack[undoStack.length-1];
+  if(prev) restoreSnapshot(prev);
+  updateUndoButtons();
+}
+
+function redoAction(){
+  if(redoStack.length===0){ notify('다시 실행할 작업이 없어요'); return; }
+  const next = redoStack.pop();
+  undoStack.push(next);
+  restoreSnapshot(next);
+  updateUndoButtons();
+}
+
+function restoreSnapshot(snap){
+  try {
+    _undoPaused = true;
+    const data = JSON.parse(snap);
+    S.pages = data.pages;
+    S.cover = data.cover;
+    S.backCover = data.backCover;
+    S.endpaper = data.endpaper;
+    S.font = data.font;
+    S.format = data.format;
+    S.projectName = data.projectName;
+    S.dirty = true;
+    renderCanvas();
+    updateOutline();
+    notify('↩ 되돌리기 완료');
+    _undoPaused = false;
+  } catch(e){ _undoPaused = false; }
+}
+
+function updateUndoButtons(){
+  const btnUndo = document.getElementById('btn-undo');
+  const btnRedo = document.getElementById('btn-redo');
+  if(btnUndo) btnUndo.style.opacity = undoStack.length>1 ? '1' : '.4';
+  if(btnRedo) btnRedo.style.opacity = redoStack.length>0 ? '1' : '.4';
+}
+
+// Ctrl+Z / Ctrl+Y 단축키
+document.addEventListener('keydown', e=>{
+  if((e.ctrlKey||e.metaKey) && e.key==='z' && !e.shiftKey){
+    // contenteditable 안에서는 브라우저 기본 동작 유지
+    if(document.activeElement && document.activeElement.isContentEditable) return;
+    e.preventDefault();
+    undoAction();
+  }
+  if((e.ctrlKey||e.metaKey) && (e.key==='y' || (e.key==='z' && e.shiftKey))){
+    e.preventDefault();
+    redoAction();
+  }
+});
+
 // ── Init ───────────────────────────────────────────
 function init(){
   // Load saved API key
@@ -1286,6 +1375,7 @@ function init(){
   selectPage(4); // first body page
   updateStatus();
   setInterval(autoSaveCheck, 30000);
+  setTimeout(()=>snapshotState(), 500); // 초기 상태 스냅샷
 }
 
 function uid(){ return Date.now().toString(36)+Math.random().toString(36).slice(2,6); }
@@ -1739,7 +1829,7 @@ function applyBackCover(){
     }
   });
   closeModal('modal-backcover');
-  notify('뒤표지 적용 완료');
+  snapshotState(); notify('뒤표지 적용 완료');
 }
 
 function showSpreadView(){
@@ -2092,20 +2182,20 @@ function addPage(){
   S.pages.splice(S.curPage+1,0,{id:uid(),type:'content',section:curSec,content:''});
   reRenderFrom(S.curPage+1);
   selectPage(S.curPage+1,true);
-  notify('페이지 추가됨');
+  snapshotState(); notify('페이지 추가됨');
 }
 function addEndpaperPage(){
   S.pages.splice(S.curPage+1,0,{id:uid(),type:'endpaper'});
   reRenderFrom(S.curPage+1);
   selectPage(S.curPage+1,true);
-  notify('속지 페이지 추가됨 — 속지 버튼으로 패턴/색상 변경 가능');
+  snapshotState(); notify('속지 페이지 추가됨 — 속지 버튼으로 패턴/색상 변경 가능');
 }
 function deletePage(){
   if(S.pages.length<=1){notify('마지막 페이지는 삭제할 수 없습니다');return;}
   S.pages.splice(S.curPage,1);
   renderAll();
   selectPage(Math.min(S.curPage,S.pages.length-1));
-  notify('페이지 삭제됨');
+  snapshotState(); notify('페이지 삭제됨');
 }
 function movePageUp(){
   if(S.curPage===0) return;
@@ -2572,7 +2662,7 @@ function applyCover(){
   }
   updateOutline();
   closeModal('modal-cover');
-  notify('표지 적용 완료');
+  snapshotState(); notify('표지 적용 완료');
 }
 function getBookBodyText(maxChars=3000){
   const texts=S.pages
