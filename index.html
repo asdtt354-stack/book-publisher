@@ -637,7 +637,10 @@ select.ts{background:var(--inp);border:1px solid #444;color:var(--txt);padding:3
         <div class="fg"><label>텍스트 색상</label><input type="color" id="bc-textcolor" value="#ffffff" onchange="previewBackCover()"></div>
       </div>
       <div class="fg"><label>배경 이미지</label>
-        <div class="dz" id="bc-dz" onclick="document.getElementById('bc-img-inp').click()">클릭하여 이미지 업로드 (또는 드래그)</div>
+        <div class="dz" id="bc-dz" onclick="document.getElementById('bc-img-inp').click()"
+          ondragover="event.preventDefault();this.style.borderColor='#7acc7a'"
+          ondragleave="this.style.borderColor=''"
+          ondrop="event.preventDefault();this.style.borderColor='';const f=event.dataTransfer.files[0];if(f&&f.type.startsWith('image/')){const r=new FileReader();r.onload=async ev=>{const fixed=await fixImageOrientation(ev.target.result);backCoverImageData=fixed;setBackCoverPreviewImage(fixed);this.textContent='이미지 선택됨 ✓';previewBackCover();};r.readAsDataURL(f);}">클릭하여 이미지 업로드 (또는 드래그)</div>
         <input type="file" id="bc-img-inp" accept="image/*" style="display:none" onchange="loadBackCoverImage(event)">
       </div>
       <div class="fg" id="bc-img-preview" style="display:none">
@@ -2735,10 +2738,12 @@ function clearBackCoverPreviewImage(){
 function loadBackCoverImage(e){
   const file=e.target.files[0]; if(!file) return;
   const r=new FileReader();
-  r.onload=ev=>{
-    backCoverImageData=ev.target.result;
-    setBackCoverPreviewImage(backCoverImageData);
+  r.onload=async ev=>{
+    const fixed=await fixImageOrientation(ev.target.result);
+    backCoverImageData=fixed;
+    setBackCoverPreviewImage(fixed);
     document.getElementById('bc-dz').textContent='이미지 선택됨 ✓';
+    previewBackCover();
   };
   r.readAsDataURL(file);
 }
