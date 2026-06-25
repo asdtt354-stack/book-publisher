@@ -1,9 +1,10 @@
 // =====================================================
-// Publoo 앱 패치 스크립트 v2
+// Publoo 앱 패치 스크립트 v3
 // 수정 내용:
 //   1. 이미지 자유 드래그 + 중앙배치 버튼
 //   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지)
-//   3. 뒤표지 모달에 본문 페이지 수 직접 입력 칸 추가
+//   3. 뒤표지 모달에 본문 페이지 수 직접 입력
+//   4. PDF 출력 시 표지/뒤표지 배경이미지 정상 출력
 // =====================================================
 
 // ── 1. 드래그 스타일 추가 ──────────────────────────
@@ -136,11 +137,9 @@ window.insertImageData = function(src, i){
 
 // ── 3. 뒤표지 모달에 페이지 수 직접 입력 추가 ────
 (function addPageCountInput(){
-  // 뒤표지 모달이 열릴 때 페이지 수 입력칸 삽입
   const observer = new MutationObserver(() => {
     const spineCalc = document.getElementById('spine-calc');
     if(spineCalc && !document.getElementById('manual-page-count-wrap')){
-
       const wrap = document.createElement('div');
       wrap.id = 'manual-page-count-wrap';
       wrap.style.cssText = 'margin-bottom:8px;padding:8px;background:rgba(106,204,138,.08);border:1px solid rgba(106,204,138,.25);border-radius:5px';
@@ -164,48 +163,32 @@ window.insertImageData = function(src, i){
   observer.observe(document.body, { childList: true, subtree: true });
 })();
 
-// 페이지 수 적용 함수
 window.applyManualPageCount = function(){
   const input = document.getElementById('manual-page-count');
   const result = document.getElementById('manual-spine-result');
   const val = parseInt(input.value);
   if(!val || val < 1){ result.textContent = '페이지 수를 입력해주세요'; result.style.color = '#e94560'; return; }
-
   const thickEl = document.getElementById('bc-paper-thick');
   const thick = thickEl ? parseFloat(thickEl.value) : 0.06;
   const spineW = Math.round(val * thick * 10) / 10;
-
-  result.textContent = `→ 책등 ${spineW}mm`;
+  result.textContent = '→ 책등 ' + spineW + 'mm';
   result.style.color = '#7acc7a';
-
-  // spine-calc 업데이트
   const spineCalc = document.getElementById('spine-calc');
-  if(spineCalc) spineCalc.textContent = `책등 너비: ${spineW}mm (${val}페이지 × ${thick}mm)`;
-
-  // S.backCover에 임시 저장
+  if(spineCalc) spineCalc.textContent = '책등 너비: ' + spineW + 'mm (' + val + '페이지 × ' + thick + 'mm)';
   if(window.S && window.S.backCover){
     S.backCover._manualPageCount = val;
     S.backCover._manualSpineW = spineW;
   }
-
-  // 미리보기 spine 업데이트
   const spineEl = document.getElementById('bc-prev-spine');
-  if(spineEl){
-    spineEl.style.width = Math.max(spineW * 2, 6) + 'px';
-  }
-
-  if(window.notify) notify(`책등 너비 ${spineW}mm 적용됨 (${val}페이지 × ${thick}mm)`);
+  if(spineEl) spineEl.style.width = Math.max(spineW * 2, 6) + 'px';
+  if(window.notify) notify('책등 너비 ' + spineW + 'mm 적용됨 (' + val + '페이지 × ' + thick + 'mm)');
 };
 
-
-// ── 4. calcSpineWidth 함수 오버라이드 (수동 입력값 우선) ──
 const _origCalcSpineWidth = window.calcSpineWidth;
 window.calcSpineWidth = function(){
-  // 수동 입력값이 있으면 우선 사용
   if(window.S && window.S.backCover && window.S.backCover._manualSpineW){
     return window.S.backCover._manualSpineW;
   }
-  // 없으면 원래 함수 사용
   if(typeof _origCalcSpineWidth === 'function') return _origCalcSpineWidth();
   const bodyPages = S.pages.filter(p => p.type === 'content').length;
   const thick = (S.backCover && S.backCover.paperThick) || 0.06;
@@ -213,11 +196,298 @@ window.calcSpineWidth = function(){
 };
 
 
-// ── 5. 표지 펼침 PDF 함수 추가 ────────────────────
+// ── 4. PDF 출력 표지 배경이미지 수정 ─────────────
+// 핵심: background-image 대신 <img> 태그로 직접 삽입
+function makePrintCoverEl(w, h, cv2){
+  const mm = v => v + 'mm';
+  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+
+  const inner = document.createElement('div');
+  inner.style.cssText = [
+    'position:absolute',
+    'top:0', 'left:0',
+    'width:' + mm(w),
+    'height:' + mm(h),
+    'overflow:hidden',
+    'background-color:' + (cv2.bgColor || '#2c3e50')
+  ].join(';');
+
+  // ★ 배경이미지를 <img> 태그로 직접 삽입 (인쇄 시 누락 방지)
+  if(cv2.bgImage){
+    const bgImg = document.createElement('img');
+    bgImg.src = cv2.bgImage;
+    bgImg.style.cssText = [
+      'position:absolute',
+      'top:0', 'left:0',
+      'width:100%',
+      'height:100%',
+      'object-fit:cover',
+      'object-position:center',
+      'z-index:0'
+    ].join(';');
+    inner.appendChild(bgImg);
+
+    // 오버레이
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1';
+    inner.appendChild(ov);
+  }
+
+  // 텍스트 레이어
+  const body = document.createElement('div');
+  const titleStyle = cv2.titleStyle || 'classic';
+  let justifyContent = 'center';
+  let alignItems = 'flex-start';
+  let textAlign = 'left';
+  if(titleStyle === 'dramatic'){ alignItems = 'center'; textAlign = 'center'; }
+  if(titleStyle === 'poster'){ justifyContent = 'flex-end'; alignItems = 'center'; textAlign = 'center'; }
+  if(titleStyle === 'essay'){ justifyContent = 'flex-end'; }
+  if(titleStyle === 'top'){ justifyContent = 'flex-start'; alignItems = 'center'; textAlign = 'center'; }
+
+  body.style.cssText = [
+    'position:relative',
+    'z-index:2',
+    'width:100%',
+    'height:100%',
+    'display:flex',
+    'flex-direction:column',
+    'padding:18mm 14mm 12mm',
+    'box-sizing:border-box'
+  ].join(';');
+
+  const tw = document.createElement('div');
+  tw.style.cssText = [
+    'flex:1',
+    'display:flex',
+    'flex-direction:column',
+    'justify-content:' + justifyContent,
+    'align-items:' + alignItems,
+    'text-align:' + textAlign,
+    'gap:5pt'
+  ].join(';');
+
+  const titleEl = document.createElement('div');
+  const titleFontSize = titleStyle === 'dramatic' ? '36pt' : titleStyle === 'poster' ? '28pt' : titleStyle === 'essay' ? '22pt' : '28pt';
+  titleEl.style.cssText = [
+    'font-size:' + titleFontSize,
+    'font-weight:900',
+    'line-height:1.2',
+    'color:#fff',
+    'text-shadow:0 2px 18px rgba(0,0,0,.9)',
+    'word-break:keep-all'
+  ].join(';');
+  titleEl.textContent = cv2.title || '책 제목';
+  tw.appendChild(titleEl);
+
+  if(cv2.subtitle){
+    const subEl = document.createElement('div');
+    subEl.style.cssText = 'font-size:11pt;color:rgba(255,255,255,.92);text-shadow:0 1px 8px rgba(0,0,0,.8);margin-top:3pt;word-break:keep-all';
+    subEl.textContent = cv2.subtitle;
+    tw.appendChild(subEl);
+  }
+  body.appendChild(tw);
+
+  if(cv2.publisher){
+    const bot = document.createElement('div');
+    bot.style.cssText = 'padding-top:5mm;border-top:.5pt solid rgba(255,255,255,.35)';
+    const pubEl = document.createElement('span');
+    pubEl.style.cssText = 'font-size:7.5pt;color:rgba(255,255,255,.78)';
+    pubEl.textContent = cv2.publisher;
+    bot.appendChild(pubEl);
+    body.appendChild(bot);
+  }
+
+  inner.appendChild(body);
+  return inner;
+}
+
+function makePrintBackCoverEl(w, h, bc2, cv2){
+  const mm = v => v + 'mm';
+
+  const inner = document.createElement('div');
+  inner.style.cssText = [
+    'position:absolute',
+    'top:0', 'left:0',
+    'width:' + mm(w),
+    'height:' + mm(h),
+    'overflow:hidden',
+    'background-color:' + (bc2.bgColor || '#2c3e50'),
+    'color:' + (bc2.textColor || '#fff')
+  ].join(';');
+
+  // ★ 뒤표지 배경이미지도 <img> 태그로
+  if(bc2.bgImage){
+    const bgImg = document.createElement('img');
+    bgImg.src = bc2.bgImage;
+    bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
+    inner.appendChild(bgImg);
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:1';
+    inner.appendChild(ov);
+  }
+
+  const body = document.createElement('div');
+  body.style.cssText = [
+    'position:relative',
+    'z-index:2',
+    'width:100%',
+    'height:100%',
+    'display:flex',
+    'flex-direction:column',
+    'padding:14mm 13mm 10mm',
+    'box-sizing:border-box',
+    'color:' + (bc2.textColor || '#fff')
+  ].join(';');
+
+  body.innerHTML = `
+    <div style="flex:1;overflow:hidden">
+      <div style="font-size:6.5pt;font-weight:700;letter-spacing:2px;text-transform:uppercase;opacity:.55;margin-bottom:3pt">Synopsis</div>
+      <div style="font-size:9.5pt;line-height:1.9;text-align:justify;word-break:keep-all">${bc2.synopsis || ''}</div>
+    </div>
+    ${cv2.author || bc2.authorBio ? `
+    <div style="padding-top:5mm;margin-top:5mm;border-top:.5pt solid rgba(255,255,255,.22)">
+      <div style="font-size:6.5pt;font-weight:700;letter-spacing:2px;opacity:.55;margin-bottom:3pt">저자 소개</div>
+      ${cv2.author ? `<div style="font-size:9pt;font-weight:700">${cv2.author}</div>` : ''}
+      ${bc2.authorBio ? `<div style="font-size:8pt;opacity:.88;line-height:1.7">${bc2.authorBio}</div>` : ''}
+    </div>` : ''}
+    <div style="display:flex;align-items:center;gap:5mm;padding-top:5mm;margin-top:5mm;border-top:.5pt solid rgba(255,255,255,.22)">
+      <div style="flex:1">
+        ${cv2.publisher ? `<div style="font-size:9pt;font-weight:700">${cv2.publisher}</div>` : ''}
+        ${bc2.isbn ? `<div style="font-size:7.5pt;opacity:.75">ISBN ${bc2.isbn}</div>` : ''}
+      </div>
+      ${bc2.price ? `<div style="font-size:9pt;font-weight:700">${bc2.price}</div>` : ''}
+    </div>
+  `;
+
+  inner.appendChild(body);
+  return inner;
+}
+
+// ── 5. exportPDF 함수 오버라이드 ─────────────────
+const _origExportPDF = window.exportPDF;
+window.exportPDF = function(){
+  const {w, h} = fmt();
+  const mm = v => v + 'mm';
+
+  const pw = document.getElementById('print-wrap');
+  pw.innerHTML = '';
+  pw.style.display = 'block';
+
+  const offscreen = document.createElement('div');
+  offscreen.style.cssText = 'position:fixed;left:-9999px;top:0;visibility:hidden';
+  document.body.appendChild(offscreen);
+
+  S.pages.forEach((pg, i) => {
+    if(pg.type === 'content' && !pg.bgImage){
+      const txt = (pg.content || '').replace(/<[^>]+>/g, '').trim();
+      if(!txt) return;
+    }
+
+    const div = document.createElement('div');
+    div.className = 'print-pg';
+    div.style.cssText = 'width:' + mm(w) + ';height:' + mm(h) + ';position:relative;overflow:hidden;background:#fff;box-sizing:border-box';
+
+    if(pg.type === 'cover'){
+      // ★ 수정된 표지 렌더링 (img 태그 사용)
+      div.appendChild(makePrintCoverEl(w, h, S.cover));
+
+    } else if(pg.type === 'backcover'){
+      // ★ 수정된 뒤표지 렌더링 (img 태그 사용)
+      div.appendChild(makePrintBackCoverEl(w, h, S.backCover, S.cover));
+
+    } else if(pg.type === 'endpaper'){
+      div.style.background = S.endpaper.color || '#f5f0e8';
+      const ep = document.createElement('div');
+      ep.style.cssText = 'position:absolute;left:-9999px;top:0;width:' + mm(w) + ';height:' + mm(h);
+      offscreen.appendChild(ep);
+      const cvs = document.createElement('canvas');
+      cvs.width = 200; cvs.height = Math.round(200 * h / w);
+      const PATTERNS = window.PATTERNS;
+      if(PATTERNS){
+        const pat = PATTERNS.find(p => p.id === S.endpaper.pattern) || PATTERNS[0];
+        pat.render(cvs.getContext('2d'), S.endpaper.color);
+        const imgEl = document.createElement('img');
+        imgEl.src = cvs.toDataURL();
+        imgEl.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';object-fit:cover';
+        div.appendChild(imgEl);
+      }
+
+    } else {
+      // 본문 페이지
+      const cp = document.createElement('div');
+      cp.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden;background:#fff';
+
+      if(pg.bgImage){
+        const bgImg = document.createElement('img');
+        bgImg.src = pg.bgImage;
+        bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
+        cp.appendChild(bgImg);
+      }
+
+      const margins = (idx) => {
+        const m = S.margins;
+        const isOdd = idx % 2 !== 0;
+        return { top:m.top, bot:m.bot, left:isOdd?m.inner:m.outer, right:isOdd?m.outer:m.inner };
+      };
+      const m = margins(i);
+
+      const textDiv = document.createElement('div');
+      textDiv.className = 'pg-content';
+      textDiv.style.cssText = [
+        'position:absolute',
+        'top:' + mm(m.top),
+        'bottom:' + mm(m.bot),
+        'left:' + mm(m.left),
+        'right:' + mm(m.right),
+        'font-family:\'' + S.font.family + '\',serif',
+        'font-size:' + S.font.size + 'pt',
+        'line-height:' + S.font.lh,
+        'color:#1a1a1a',
+        'overflow:hidden',
+        'z-index:1'
+      ].join(';');
+      textDiv.innerHTML = pg.content || '';
+      cp.appendChild(textDiv);
+
+      // 페이지 번호
+      const getPageNumStr = window.getPageNumStr;
+      if(getPageNumStr){
+        const pn = getPageNumStr(i);
+        if(pn.show){
+          const numEl = document.createElement('div');
+          const bottom = mm(Math.floor(m.bot / 2));
+          numEl.style.cssText = 'position:absolute;font-size:9pt;color:#444;bottom:' + bottom + ';' + (pn.align === 'right' ? 'right:' + mm(m.right) : 'left:' + mm(m.left)) + ';z-index:2';
+          numEl.textContent = pn.str;
+          cp.appendChild(numEl);
+        }
+      }
+      div.appendChild(cp);
+    }
+
+    pw.appendChild(div);
+  });
+
+  document.body.removeChild(offscreen);
+
+  let style = document.getElementById('print-style');
+  if(!style){ style = document.createElement('style'); style.id = 'print-style'; document.head.appendChild(style); }
+  style.textContent = '@media print{@page{size:' + mm(w) + ' ' + mm(h) + ' portrait;margin:0}body>*:not(#print-wrap){display:none!important}#print-wrap{display:block!important;background:#fff!important}.print-pg{page-break-after:always;page-break-inside:avoid;position:relative;background:#fff!important}.print-pg:last-child{page-break-after:avoid!important}.pg-sec-badge,.page-label,.img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn{display:none!important}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}';
+
+  setTimeout(() => {
+    window.print();
+    setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 500);
+  }, 300);
+
+  if(window.notify) notify('PDF 인쇄 창을 열었습니다. "PDF로 저장"을 선택하세요.');
+};
+
+
+// ── 6. 표지 펼침 PDF 함수 ─────────────────────────
 window.exportCoverSpreadPDF = function(){
   const {w, h} = fmt();
   const spineW = calcSpineWidth();
   const totalW = Math.round((w * 2 + spineW) * 10) / 10;
+  const mm = v => v + 'mm';
 
   const pw = document.getElementById('print-wrap');
   pw.innerHTML = '';
@@ -225,92 +495,51 @@ window.exportCoverSpreadPDF = function(){
 
   const spread = document.createElement('div');
   spread.className = 'print-pg';
-  spread.style.cssText = [
-    'display:flex',
-    'margin:0',
-    'padding:0',
-    'overflow:hidden',
-    'width:' + totalW + 'mm',
-    'height:' + h + 'mm'
-  ].join(';');
+  spread.style.cssText = 'display:flex;margin:0;padding:0;overflow:hidden;width:' + mm(totalW) + ';height:' + mm(h);
 
   // ① 뒤표지
-  const bcIdx = S.pages.findIndex(p => p.type === 'backcover');
-  const bcEl = makeBackCoverEl(bcIdx >= 0 ? bcIdx : 0);
-  bcEl.style.cssText = 'flex-shrink:0;overflow:hidden;width:' + w + 'mm;height:' + h + 'mm';
-  spread.appendChild(bcEl);
+  const bcWrap = document.createElement('div');
+  bcWrap.style.cssText = 'position:relative;flex-shrink:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden';
+  bcWrap.appendChild(makePrintBackCoverEl(w, h, S.backCover, S.cover));
+  spread.appendChild(bcWrap);
 
   // ② 등
   const spine = document.createElement('div');
   const sfPx = Math.max(Math.round(spineW * 3.7795 * 0.55), 7);
-  spine.style.cssText = [
-    'flex-shrink:0',
-    'overflow:hidden',
-    'display:flex',
-    'align-items:center',
-    'justify-content:center',
-    'width:' + spineW + 'mm',
-    'height:' + h + 'mm',
-    'background:' + (S.backCover.bgColor || '#2c3e50'),
-    'filter:brightness(.82)'
-  ].join(';');
-  const spineText = document.createElement('div');
-  spineText.style.cssText = [
-    'writing-mode:vertical-rl',
-    'white-space:nowrap',
-    'overflow:hidden',
-    'text-overflow:ellipsis',
-    'font-size:' + sfPx + 'px',
-    'color:' + (S.backCover.textColor || '#fff'),
-    'padding:2mm',
-    'max-height:' + (h * 0.92) + 'mm'
-  ].join(';');
-  spineText.textContent = S.cover.title + (S.cover.author ? ' — ' + S.cover.author : '');
-  spine.appendChild(spineText);
+  spine.style.cssText = 'flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;width:' + mm(spineW) + ';height:' + mm(h) + ';background:' + (S.backCover.bgColor || '#2c3e50') + ';filter:brightness(.82)';
+  const st = document.createElement('div');
+  st.style.cssText = 'writing-mode:vertical-rl;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:' + sfPx + 'px;color:' + (S.backCover.textColor || '#fff') + ';padding:2mm;max-height:' + (h * 0.92) + 'mm';
+  st.textContent = S.cover.title + (S.cover.author ? ' — ' + S.cover.author : '');
+  spine.appendChild(st);
   spread.appendChild(spine);
 
   // ③ 앞표지
-  const cvIdx = S.pages.findIndex(p => p.type === 'cover');
-  const cvEl = makeCoverEl(cvIdx >= 0 ? cvIdx : 0);
-  cvEl.style.cssText = 'flex-shrink:0;overflow:hidden;width:' + w + 'mm;height:' + h + 'mm';
-  spread.appendChild(cvEl);
+  const cvWrap = document.createElement('div');
+  cvWrap.style.cssText = 'position:relative;flex-shrink:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden';
+  cvWrap.appendChild(makePrintCoverEl(w, h, S.cover));
+  spread.appendChild(cvWrap);
 
   pw.appendChild(spread);
 
   let style = document.getElementById('print-style');
-  if(!style){
-    style = document.createElement('style');
-    style.id = 'print-style';
-    document.head.appendChild(style);
-  }
-  style.textContent = [
-    '@media print{',
-    '  @page{size:' + totalW + 'mm ' + h + 'mm landscape;margin:0}',
-    '  body>*:not(#print-wrap){display:none!important}',
-    '  #print-wrap{display:block!important}',
-    '  .print-pg{width:' + totalW + 'mm;height:' + h + 'mm;display:flex;overflow:hidden;page-break-after:avoid}',
-    '  *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}',
-    '  .img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn,.pg-sec-badge,.page-label{display:none!important}',
-    '}'
-  ].join('');
+  if(!style){ style = document.createElement('style'); style.id = 'print-style'; document.head.appendChild(style); }
+  style.textContent = '@media print{@page{size:' + mm(totalW) + ' ' + mm(h) + ' landscape;margin:0}body>*:not(#print-wrap){display:none!important}#print-wrap{display:block!important}.print-pg{width:' + mm(totalW) + ';height:' + mm(h) + ';display:flex;overflow:hidden;page-break-after:avoid}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn,.pg-sec-badge,.page-label{display:none!important}}';
 
   setTimeout(() => {
     window.print();
     setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 600);
   }, 300);
 
-  notify('표지 펼침 PDF — 총 ' + totalW + 'mm (뒤표지 ' + w + 'mm + 등 ' + spineW + 'mm + 앞표지 ' + w + 'mm)');
+  if(window.notify) notify('표지 펼침 PDF — 총 ' + totalW + 'mm (뒤표지 ' + w + 'mm + 등 ' + spineW + 'mm + 앞표지 ' + w + 'mm)');
 };
 
 
-// ── 6. 툴바에 표지PDF 버튼 추가 ───────────────────
+// ── 7. 툴바에 표지PDF 버튼 추가 ───────────────────
 (function addSpreadButton(){
   const btns = document.querySelectorAll('#toolbar button');
   let pdfBtn = null;
   btns.forEach(b => { if(b.textContent.includes('PDF 출력')) pdfBtn = b; });
-
   if(pdfBtn && !document.getElementById('btn-cover-spread')){
-    // ★ 기존 "PDF 출력" 버튼 텍스트 그대로 유지 ★
     const coverBtn = document.createElement('button');
     coverBtn.id = 'btn-cover-spread';
     coverBtn.className = 'tb';
@@ -319,8 +548,7 @@ window.exportCoverSpreadPDF = function(){
     coverBtn.textContent = '📄 표지PDF';
     coverBtn.onclick = () => exportCoverSpreadPDF();
     pdfBtn.parentNode.insertBefore(coverBtn, pdfBtn.nextSibling);
-    console.log('✅ 표지PDF 버튼 추가됨');
   }
 })();
 
-console.log('✅ Publoo 패치 v2 완료! 이미지 드래그 + 중앙배치 + 표지PDF + 페이지수 직접입력');
+console.log('✅ Publoo 패치 v3 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
