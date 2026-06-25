@@ -1,6 +1,5 @@
 // =====================================================
 // Publoo 앱 패치 스크립트
-// 브라우저 콘솔에서 실행하거나 원본 HTML에 직접 붙여넣기
 // 수정 내용:
 //   1. 이미지 자유 드래그 + 중앙배치 버튼
 //   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지)
@@ -37,26 +36,22 @@ window.insertImageData = function(src, i){
   const pageW = w * PX;
   const pageH = h * PX;
 
-  // 컨테이너
   const container = document.createElement('div');
   container.className = 'img-drag-container';
   container.style.width = Math.round(pageW * 0.5) + 'px';
   container.style.left  = Math.round(pageW * 0.25) + 'px';
   container.style.top   = Math.round(pageH * 0.2)  + 'px';
 
-  // 레이블
   const handleLbl = document.createElement('div');
   handleLbl.className = 'img-drag-handle';
   handleLbl.textContent = '↕ 드래그로 이동';
   container.appendChild(handleLbl);
 
-  // 이미지
   const img = document.createElement('img');
   img.src = src;
   img.style.cssText = 'width:100%;height:auto;display:block;pointer-events:none';
   container.appendChild(img);
 
-  // 중앙 배치 버튼
   const centerBtn = document.createElement('div');
   centerBtn.className = 'img-center-btn';
   centerBtn.textContent = '⊕ 중앙';
@@ -73,7 +68,6 @@ window.insertImageData = function(src, i){
   };
   container.appendChild(centerBtn);
 
-  // 삭제 버튼
   const del = document.createElement('div');
   del.className = 'img-drag-del';
   del.textContent = '✕';
@@ -85,7 +79,6 @@ window.insertImageData = function(src, i){
   };
   container.appendChild(del);
 
-  // 크기 조절 핸들
   const resizeH = document.createElement('div');
   resizeH.className = 'img-drag-resize';
   resizeH.addEventListener('mousedown', e => {
@@ -105,7 +98,6 @@ window.insertImageData = function(src, i){
   });
   container.appendChild(resizeH);
 
-  // 드래그 이동
   container.addEventListener('mousedown', e => {
     if(e.target === del || e.target === resizeH || e.target === centerBtn) return;
     e.preventDefault();
@@ -126,7 +118,6 @@ window.insertImageData = function(src, i){
 
   page.appendChild(container);
 
-  // 로드 후 자동 중앙 배치
   img.onload = () => {
     const cW = container.offsetWidth;
     const cH = container.offsetHeight || img.offsetHeight;
@@ -206,7 +197,6 @@ window.exportCoverSpreadPDF = function(){
 
   pw.appendChild(spread);
 
-  // 인쇄 스타일
   let style = document.getElementById('print-style');
   if(!style){
     style = document.createElement('style');
@@ -235,16 +225,13 @@ window.exportCoverSpreadPDF = function(){
 
 // ── 4. 툴바에 표지PDF 버튼 추가 ───────────────────
 (function addSpreadButton(){
-  // exportPDF 버튼 찾기
   const btns = document.querySelectorAll('#toolbar button');
   let pdfBtn = null;
   btns.forEach(b => { if(b.textContent.includes('PDF 출력')) pdfBtn = b; });
 
   if(pdfBtn && !document.getElementById('btn-cover-spread')){
-    // 버튼 텍스트 변경
-    pdfBtn.textContent = '📄 본문PDF';
+    // ★ 기존 "PDF 출력" 버튼 텍스트 그대로 유지 ★
 
-    // 표지PDF 버튼 삽입
     const coverBtn = document.createElement('button');
     coverBtn.id = 'btn-cover-spread';
     coverBtn.className = 'tb';
@@ -254,9 +241,7 @@ window.exportCoverSpreadPDF = function(){
     coverBtn.onclick = () => exportCoverSpreadPDF();
     pdfBtn.parentNode.insertBefore(coverBtn, pdfBtn.nextSibling);
     console.log('✅ 표지PDF 버튼 추가됨');
-  } else if(!pdfBtn) {
-    console.warn('PDF 출력 버튼을 찾지 못했습니다. 수동으로 exportCoverSpreadPDF() 호출 가능');
   }
 })();
 
-console.log('✅ Publoo 패치 완료! 수정사항: 이미지 자유드래그 + 중앙배치 + 표지 펼침PDF');
+console.log('✅ Publoo 패치 완료! 이미지 자유드래그 + 중앙배치 + 표지 펼침PDF');
