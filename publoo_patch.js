@@ -1,8 +1,9 @@
 // =====================================================
-// Publoo 앱 패치 스크립트
+// Publoo 앱 패치 스크립트 v2
 // 수정 내용:
 //   1. 이미지 자유 드래그 + 중앙배치 버튼
 //   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지)
+//   3. 뒤표지 모달에 본문 페이지 수 직접 입력 칸 추가
 // =====================================================
 
 // ── 1. 드래그 스타일 추가 ──────────────────────────
@@ -133,7 +134,86 @@ window.insertImageData = function(src, i){
 };
 
 
-// ── 3. 표지 펼침 PDF 함수 추가 ────────────────────
+// ── 3. 뒤표지 모달에 페이지 수 직접 입력 추가 ────
+(function addPageCountInput(){
+  // 뒤표지 모달이 열릴 때 페이지 수 입력칸 삽입
+  const observer = new MutationObserver(() => {
+    const spineCalc = document.getElementById('spine-calc');
+    if(spineCalc && !document.getElementById('manual-page-count-wrap')){
+
+      const wrap = document.createElement('div');
+      wrap.id = 'manual-page-count-wrap';
+      wrap.style.cssText = 'margin-bottom:8px;padding:8px;background:rgba(106,204,138,.08);border:1px solid rgba(106,204,138,.25);border-radius:5px';
+      wrap.innerHTML = `
+        <div style="font-size:11px;color:#7acc7a;font-weight:bold;margin-bottom:6px">📄 본문 페이지 수 직접 입력</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <input type="number" id="manual-page-count" min="1" max="2000" placeholder="예: 112"
+            style="width:80px;background:#252540;border:1px solid #444;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;font-family:inherit">
+          <span style="font-size:11px;color:#aaa">페이지</span>
+          <button onclick="applyManualPageCount()"
+            style="background:#e94560;border:none;color:#fff;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit">
+            적용
+          </button>
+          <span id="manual-spine-result" style="font-size:11px;color:#7acc7a"></span>
+        </div>
+        <div style="font-size:10px;color:#666;margin-top:4px">표지만 작업할 때 본문 페이지 수를 입력하면 책등 너비가 정확하게 계산됩니다</div>
+      `;
+      spineCalc.parentNode.insertBefore(wrap, spineCalc);
+    }
+  });
+  observer.observe(document.body, { childList: true, subtree: true });
+})();
+
+// 페이지 수 적용 함수
+window.applyManualPageCount = function(){
+  const input = document.getElementById('manual-page-count');
+  const result = document.getElementById('manual-spine-result');
+  const val = parseInt(input.value);
+  if(!val || val < 1){ result.textContent = '페이지 수를 입력해주세요'; result.style.color = '#e94560'; return; }
+
+  const thickEl = document.getElementById('bc-paper-thick');
+  const thick = thickEl ? parseFloat(thickEl.value) : 0.06;
+  const spineW = Math.round(val * thick * 10) / 10;
+
+  result.textContent = `→ 책등 ${spineW}mm`;
+  result.style.color = '#7acc7a';
+
+  // spine-calc 업데이트
+  const spineCalc = document.getElementById('spine-calc');
+  if(spineCalc) spineCalc.textContent = `책등 너비: ${spineW}mm (${val}페이지 × ${thick}mm)`;
+
+  // S.backCover에 임시 저장
+  if(window.S && window.S.backCover){
+    S.backCover._manualPageCount = val;
+    S.backCover._manualSpineW = spineW;
+  }
+
+  // 미리보기 spine 업데이트
+  const spineEl = document.getElementById('bc-prev-spine');
+  if(spineEl){
+    spineEl.style.width = Math.max(spineW * 2, 6) + 'px';
+  }
+
+  if(window.notify) notify(`책등 너비 ${spineW}mm 적용됨 (${val}페이지 × ${thick}mm)`);
+};
+
+
+// ── 4. calcSpineWidth 함수 오버라이드 (수동 입력값 우선) ──
+const _origCalcSpineWidth = window.calcSpineWidth;
+window.calcSpineWidth = function(){
+  // 수동 입력값이 있으면 우선 사용
+  if(window.S && window.S.backCover && window.S.backCover._manualSpineW){
+    return window.S.backCover._manualSpineW;
+  }
+  // 없으면 원래 함수 사용
+  if(typeof _origCalcSpineWidth === 'function') return _origCalcSpineWidth();
+  const bodyPages = S.pages.filter(p => p.type === 'content').length;
+  const thick = (S.backCover && S.backCover.paperThick) || 0.06;
+  return Math.round(bodyPages * thick * 10) / 10;
+};
+
+
+// ── 5. 표지 펼침 PDF 함수 추가 ────────────────────
 window.exportCoverSpreadPDF = function(){
   const {w, h} = fmt();
   const spineW = calcSpineWidth();
@@ -223,7 +303,7 @@ window.exportCoverSpreadPDF = function(){
 };
 
 
-// ── 4. 툴바에 표지PDF 버튼 추가 ───────────────────
+// ── 6. 툴바에 표지PDF 버튼 추가 ───────────────────
 (function addSpreadButton(){
   const btns = document.querySelectorAll('#toolbar button');
   let pdfBtn = null;
@@ -231,7 +311,6 @@ window.exportCoverSpreadPDF = function(){
 
   if(pdfBtn && !document.getElementById('btn-cover-spread')){
     // ★ 기존 "PDF 출력" 버튼 텍스트 그대로 유지 ★
-
     const coverBtn = document.createElement('button');
     coverBtn.id = 'btn-cover-spread';
     coverBtn.className = 'tb';
@@ -244,4 +323,4 @@ window.exportCoverSpreadPDF = function(){
   }
 })();
 
-console.log('✅ Publoo 패치 완료! 이미지 자유드래그 + 중앙배치 + 표지 펼침PDF');
+console.log('✅ Publoo 패치 v2 완료! 이미지 드래그 + 중앙배치 + 표지PDF + 페이지수 직접입력');
