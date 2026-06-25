@@ -158,6 +158,23 @@ window.insertImageData = function(src, i){
         <div style="font-size:10px;color:#666;margin-top:4px">표지만 작업할 때 본문 페이지 수를 입력하면 책등 너비가 정확하게 계산됩니다</div>
       `;
       spineCalc.parentNode.insertBefore(wrap, spineCalc);
+
+      // ★ 모달 재오픈 시 이전 입력값 복원
+      if(window.S && window.S.backCover && window.S.backCover._manualPageCount){
+        const inp = document.getElementById('manual-page-count');
+        const res = document.getElementById('manual-spine-result');
+        if(inp) inp.value = S.backCover._manualPageCount;
+        if(res){
+          res.textContent = '→ 책등 ' + S.backCover._manualSpineW + 'mm';
+          res.style.color = '#7acc7a';
+        }
+        // spine-calc 텍스트도 복원
+        const thick = S.backCover.paperThick || 0.06;
+        spineCalc.textContent = '책등 너비: ' + S.backCover._manualSpineW + 'mm (' + S.backCover._manualPageCount + '페이지 × ' + thick + 'mm)';
+        // spine 미리보기도 복원
+        const spineEl = document.getElementById('bc-prev-spine');
+        if(spineEl) spineEl.style.width = Math.max(S.backCover._manualSpineW * 2, 6) + 'px';
+      }
     }
   });
   observer.observe(document.body, { childList: true, subtree: true });
@@ -551,4 +568,4 @@ window.exportCoverSpreadPDF = function(){
   }
 })();
 
-console.log('✅ Publoo 패치 v3 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
+console.log('✅ Publoo 패치 v4 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
