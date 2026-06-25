@@ -180,6 +180,10 @@ window.insertImageData = function(src, i){
   observer.observe(document.body, { childList: true, subtree: true });
 })();
 
+// 수동 입력값을 S.backCover 외부에 별도 보관 (applyBackCover가 덮어써도 유지)
+window._publoo_manualSpineW = null;
+window._publoo_manualPageCount = null;
+
 window.applyManualPageCount = function(){
   const input = document.getElementById('manual-page-count');
   const result = document.getElementById('manual-spine-result');
@@ -192,10 +196,15 @@ window.applyManualPageCount = function(){
   result.style.color = '#7acc7a';
   const spineCalc = document.getElementById('spine-calc');
   if(spineCalc) spineCalc.textContent = '책등 너비: ' + spineW + 'mm (' + val + '페이지 × ' + thick + 'mm)';
+
+  // ★ S.backCover 외부 전역변수에도 저장 (applyBackCover 덮어쓰기 방지)
+  window._publoo_manualSpineW = spineW;
+  window._publoo_manualPageCount = val;
   if(window.S && window.S.backCover){
     S.backCover._manualPageCount = val;
     S.backCover._manualSpineW = spineW;
   }
+
   const spineEl = document.getElementById('bc-prev-spine');
   if(spineEl) spineEl.style.width = Math.max(spineW * 2, 6) + 'px';
   if(window.notify) notify('책등 너비 ' + spineW + 'mm 적용됨 (' + val + '페이지 × ' + thick + 'mm)');
@@ -203,6 +212,10 @@ window.applyManualPageCount = function(){
 
 const _origCalcSpineWidth = window.calcSpineWidth;
 window.calcSpineWidth = function(){
+  // ★ 전역변수 우선 확인 (applyBackCover 덮어쓰기 후에도 유지)
+  if(window._publoo_manualSpineW){
+    return window._publoo_manualSpineW;
+  }
   if(window.S && window.S.backCover && window.S.backCover._manualSpineW){
     return window.S.backCover._manualSpineW;
   }
@@ -568,4 +581,4 @@ window.exportCoverSpreadPDF = function(){
   }
 })();
 
-console.log('✅ Publoo 패치 v4 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
+console.log('✅ Publoo 패치 v5 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
