@@ -1,8 +1,8 @@
 // =====================================================
-// Publoo 앱 패치 스크립트 v3
+// Publoo 앱 패치 스크립트 v6
 // 수정 내용:
 //   1. 이미지 자유 드래그 + 중앙배치 버튼
-//   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지)
+//   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지) — 부크크 규격 + 재단 여유 자동 적용
 //   3. 뒤표지 모달에 본문 페이지 수 직접 입력
 //   4. PDF 출력 시 표지/뒤표지 배경이미지 정상 출력
 // =====================================================
@@ -168,10 +168,8 @@ window.insertImageData = function(src, i){
           res.textContent = '→ 책등 ' + S.backCover._manualSpineW + 'mm';
           res.style.color = '#7acc7a';
         }
-        // spine-calc 텍스트도 복원
         const thick = S.backCover.paperThick || 0.06;
         spineCalc.textContent = '책등 너비: ' + S.backCover._manualSpineW + 'mm (' + S.backCover._manualPageCount + '페이지 × ' + thick + 'mm)';
-        // spine 미리보기도 복원
         const spineEl = document.getElementById('bc-prev-spine');
         if(spineEl) spineEl.style.width = Math.max(S.backCover._manualSpineW * 2, 6) + 'px';
       }
@@ -180,7 +178,6 @@ window.insertImageData = function(src, i){
   observer.observe(document.body, { childList: true, subtree: true });
 })();
 
-// 수동 입력값을 S.backCover 외부에 별도 보관 (applyBackCover가 덮어써도 유지)
 window._publoo_manualSpineW = null;
 window._publoo_manualPageCount = null;
 
@@ -197,7 +194,6 @@ window.applyManualPageCount = function(){
   const spineCalc = document.getElementById('spine-calc');
   if(spineCalc) spineCalc.textContent = '책등 너비: ' + spineW + 'mm (' + val + '페이지 × ' + thick + 'mm)';
 
-  // ★ S.backCover 외부 전역변수에도 저장 (applyBackCover 덮어쓰기 방지)
   window._publoo_manualSpineW = spineW;
   window._publoo_manualPageCount = val;
   if(window.S && window.S.backCover){
@@ -212,7 +208,6 @@ window.applyManualPageCount = function(){
 
 const _origCalcSpineWidth = window.calcSpineWidth;
 window.calcSpineWidth = function(){
-  // ★ 전역변수 우선 확인 (applyBackCover 덮어쓰기 후에도 유지)
   if(window._publoo_manualSpineW){
     return window._publoo_manualSpineW;
   }
@@ -227,7 +222,6 @@ window.calcSpineWidth = function(){
 
 
 // ── 4. PDF 출력 표지 배경이미지 수정 ─────────────
-// 핵심: background-image 대신 <img> 태그로 직접 삽입
 function makePrintCoverEl(w, h, cv2){
   const mm = v => v + 'mm';
   const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -242,7 +236,6 @@ function makePrintCoverEl(w, h, cv2){
     'background-color:' + (cv2.bgColor || '#2c3e50')
   ].join(';');
 
-  // ★ 배경이미지를 <img> 태그로 직접 삽입 (인쇄 시 누락 방지)
   if(cv2.bgImage){
     const bgImg = document.createElement('img');
     bgImg.src = cv2.bgImage;
@@ -257,13 +250,11 @@ function makePrintCoverEl(w, h, cv2){
     ].join(';');
     inner.appendChild(bgImg);
 
-    // 오버레이
     const ov = document.createElement('div');
     ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1';
     inner.appendChild(ov);
   }
 
-  // 텍스트 레이어
   const body = document.createElement('div');
   const titleStyle = cv2.titleStyle || 'classic';
   let justifyContent = 'center';
@@ -345,7 +336,6 @@ function makePrintBackCoverEl(w, h, bc2, cv2){
     'color:' + (bc2.textColor || '#fff')
   ].join(';');
 
-  // ★ 뒤표지 배경이미지도 <img> 태그로
   if(bc2.bgImage){
     const bgImg = document.createElement('img');
     bgImg.src = bc2.bgImage;
@@ -393,7 +383,7 @@ function makePrintBackCoverEl(w, h, bc2, cv2){
   return inner;
 }
 
-// ── 5. exportPDF 함수 오버라이드 ─────────────────
+// ── 5. exportPDF 함수 오버라이드 (본문 PDF) ──────
 const _origExportPDF = window.exportPDF;
 window.exportPDF = function(){
   const {w, h} = fmt();
@@ -418,11 +408,9 @@ window.exportPDF = function(){
     div.style.cssText = 'width:' + mm(w) + ';height:' + mm(h) + ';position:relative;overflow:hidden;background:#fff;box-sizing:border-box';
 
     if(pg.type === 'cover'){
-      // ★ 수정된 표지 렌더링 (img 태그 사용)
       div.appendChild(makePrintCoverEl(w, h, S.cover));
 
     } else if(pg.type === 'backcover'){
-      // ★ 수정된 뒤표지 렌더링 (img 태그 사용)
       div.appendChild(makePrintBackCoverEl(w, h, S.backCover, S.cover));
 
     } else if(pg.type === 'endpaper'){
@@ -443,7 +431,6 @@ window.exportPDF = function(){
       }
 
     } else {
-      // 본문 페이지
       const cp = document.createElement('div');
       cp.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden;background:#fff';
 
@@ -479,7 +466,6 @@ window.exportPDF = function(){
       textDiv.innerHTML = pg.content || '';
       cp.appendChild(textDiv);
 
-      // 페이지 번호
       const getPageNumStr = window.getPageNumStr;
       if(getPageNumStr){
         const pn = getPageNumStr(i);
@@ -512,20 +498,28 @@ window.exportPDF = function(){
 };
 
 
-// ── 6. 표지 펼침 PDF 함수 ─────────────────────────
+// ── 6. 표지 펼침 PDF 함수 (부크크 규격 + 재단 여유 자동 적용) ──
 window.exportCoverSpreadPDF = function(){
   const {w, h} = fmt();
   const spineW = calcSpineWidth();
-  const totalW = Math.round((w * 2 + spineW) * 10) / 10;
+  const BLEED = 3;  // 재단 여유 사방 3mm (부크크 권장)
+  const innerW = Math.round((w * 2 + spineW) * 10) / 10;
+  const totalW = Math.round((w * 2 + spineW + BLEED * 2) * 10) / 10;
+  const totalH = Math.round((h + BLEED * 2) * 10) / 10;
   const mm = v => v + 'mm';
 
   const pw = document.getElementById('print-wrap');
   pw.innerHTML = '';
   pw.style.display = 'block';
 
+  // 외곽 wrapper (재단 여유 포함된 전체 영역, 책 배경색으로 채워짐)
+  const outerWrap = document.createElement('div');
+  outerWrap.className = 'print-pg';
+  outerWrap.style.cssText = 'position:relative;margin:0;padding:0;overflow:hidden;width:' + mm(totalW) + ';height:' + mm(totalH) + ';background:' + (S.backCover.bgColor || '#2c3e50');
+
+  // 안쪽 spread (실제 콘텐츠, BLEED만큼 안쪽에 배치)
   const spread = document.createElement('div');
-  spread.className = 'print-pg';
-  spread.style.cssText = 'display:flex;margin:0;padding:0;overflow:hidden;width:' + mm(totalW) + ';height:' + mm(h);
+  spread.style.cssText = 'position:absolute;top:' + mm(BLEED) + ';left:' + mm(BLEED) + ';display:flex;width:' + mm(innerW) + ';height:' + mm(h) + ';overflow:hidden';
 
   // ① 뒤표지
   const bcWrap = document.createElement('div');
@@ -549,18 +543,30 @@ window.exportCoverSpreadPDF = function(){
   cvWrap.appendChild(makePrintCoverEl(w, h, S.cover));
   spread.appendChild(cvWrap);
 
-  pw.appendChild(spread);
+  outerWrap.appendChild(spread);
+  pw.appendChild(outerWrap);
 
+  // ★ @page size 강제 + 브라우저 기본 여백/스케일 모두 차단
   let style = document.getElementById('print-style');
   if(!style){ style = document.createElement('style'); style.id = 'print-style'; document.head.appendChild(style); }
-  style.textContent = '@media print{@page{size:' + mm(totalW) + ' ' + mm(h) + ' landscape;margin:0}body>*:not(#print-wrap){display:none!important}#print-wrap{display:block!important}.print-pg{width:' + mm(totalW) + ';height:' + mm(h) + ';display:flex;overflow:hidden;page-break-after:avoid}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}.img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn,.pg-sec-badge,.page-label{display:none!important}}';
+  style.textContent = `
+    @page{size:${totalW}mm ${totalH}mm;margin:0!important}
+    @media print{
+      html,body{margin:0!important;padding:0!important;width:${totalW}mm!important;height:${totalH}mm!important}
+      body>*:not(#print-wrap){display:none!important}
+      #print-wrap{display:block!important;margin:0!important;padding:0!important;width:${totalW}mm!important;height:${totalH}mm!important}
+      .print-pg{width:${totalW}mm!important;height:${totalH}mm!important;page-break-after:avoid!important;margin:0!important;padding:0!important}
+      *{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}
+      .img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn,.pg-sec-badge,.page-label{display:none!important}
+    }
+  `;
 
   setTimeout(() => {
     window.print();
     setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 600);
   }, 300);
 
-  if(window.notify) notify('표지 펼침 PDF — 총 ' + totalW + 'mm (뒤표지 ' + w + 'mm + 등 ' + spineW + 'mm + 앞표지 ' + w + 'mm)');
+  if(window.notify) notify('표지 PDF — ' + totalW + ' × ' + totalH + 'mm (콘텐츠 ' + innerW + 'mm + 재단여유 사방 ' + BLEED + 'mm)');
 };
 
 
@@ -574,11 +580,11 @@ window.exportCoverSpreadPDF = function(){
     coverBtn.id = 'btn-cover-spread';
     coverBtn.className = 'tb';
     coverBtn.style.color = '#f4a636';
-    coverBtn.title = '뒤표지+등+앞표지 펼침 PDF 출력 (부크크 업로드용)';
+    coverBtn.title = '뒤표지+등+앞표지 펼침 PDF 출력 (부크크 업로드용 — 재단 여유 자동 포함)';
     coverBtn.textContent = '📄 표지PDF';
     coverBtn.onclick = () => exportCoverSpreadPDF();
     pdfBtn.parentNode.insertBefore(coverBtn, pdfBtn.nextSibling);
   }
 })();
 
-console.log('✅ Publoo 패치 v5 완료! 표지 배경이미지 PDF 출력 수정 + 페이지수 입력 + 드래그');
+console.log('✅ Publoo 패치 v6 완료! 부크크 규격 + 재단 여유 자동 적용');
