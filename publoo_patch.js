@@ -1,15 +1,19 @@
 // =====================================================
-// Publoo 앱 패치 스크립트 v6
-// 수정 내용:
-//   1. 이미지 자유 드래그 + 중앙배치 버튼
-//   2. 표지 펼침 PDF 출력 (뒤표지+등+앞표지) — 부크크 규격 + 재단 여유 자동 적용
-//   3. 뒤표지 모달에 본문 페이지 수 직접 입력
-//   4. PDF 출력 시 표지/뒤표지 배경이미지 정상 출력
+// Publoo 앱 패치 스크립트 v7
+// v6에서 두 가지 부크크 반려 사유 수정:
+//   ✅ 1) 책등 텍스트 정중앙 정렬 (padding 제거 + 폰트 비율 0.55→0.45)
+//   ✅ 2) 재단 여백 3mm 영역에도 배경 이미지가 꽉차게 들어가도록 구조 재설계
+//        (앞표지/뒤표지 외곽 영역을 BLEED만큼 확장 + 텍스트는 안전 영역 유지)
+//
+// v6의 모든 기능 그대로 유지하고, exportCoverSpreadPDF 함수만 교체합니다.
+// v6 다음에 이 스크립트를 로드하거나, v6 대신 사용해도 OK.
 // =====================================================
 
-// ── 1. 드래그 스타일 추가 ──────────────────────────
+// ── 1. 드래그 스타일 추가 (v6 동일) ───────────────
 (function addDragStyles(){
+  if(document.getElementById('publoo-drag-style')) return;
   const style = document.createElement('style');
+  style.id = 'publoo-drag-style';
   style.textContent = `
 .img-drag-container{position:absolute;display:inline-block;cursor:move;z-index:5;user-select:none}
 .img-drag-container img{display:block;max-width:none;border:1.5px dashed rgba(233,69,96,.6)}
@@ -27,7 +31,7 @@
 })();
 
 
-// ── 2. 이미지 자유 드래그 함수 교체 ──────────────
+// ── 2. 이미지 자유 드래그 함수 (v6 동일) ─────────
 window.insertImageData = function(src, i){
   const wrap = typeof pageEl === 'function' ? pageEl(i) : document.querySelector(`[data-pgi="${i}"]`);
   const page = wrap ? (wrap.querySelector('.book-page') || wrap) : null;
@@ -135,7 +139,7 @@ window.insertImageData = function(src, i){
 };
 
 
-// ── 3. 뒤표지 모달에 페이지 수 직접 입력 추가 ────
+// ── 3. 뒤표지 모달 페이지수 입력 (v6 동일) ───────
 (function addPageCountInput(){
   const observer = new MutationObserver(() => {
     const spineCalc = document.getElementById('spine-calc');
@@ -146,7 +150,7 @@ window.insertImageData = function(src, i){
       wrap.innerHTML = `
         <div style="font-size:11px;color:#7acc7a;font-weight:bold;margin-bottom:6px">📄 본문 페이지 수 직접 입력</div>
         <div style="display:flex;align-items:center;gap:8px">
-          <input type="number" id="manual-page-count" min="1" max="2000" placeholder="예: 112"
+          <input type="number" id="manual-page-count" min="1" max="2000" placeholder="예: 118"
             style="width:80px;background:#252540;border:1px solid #444;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;font-family:inherit">
           <span style="font-size:11px;color:#aaa">페이지</span>
           <button onclick="applyManualPageCount()"
@@ -159,7 +163,6 @@ window.insertImageData = function(src, i){
       `;
       spineCalc.parentNode.insertBefore(wrap, spineCalc);
 
-      // ★ 모달 재오픈 시 이전 입력값 복원
       if(window.S && window.S.backCover && window.S.backCover._manualPageCount){
         const inp = document.getElementById('manual-page-count');
         const res = document.getElementById('manual-spine-result');
@@ -221,10 +224,9 @@ window.calcSpineWidth = function(){
 };
 
 
-// ── 4. PDF 출력 표지 배경이미지 수정 ─────────────
+// ── 4. PDF 출력 표지 요소 함수 (v6 동일) ─────────
 function makePrintCoverEl(w, h, cv2){
   const mm = v => v + 'mm';
-  const esc = s => String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
 
   const inner = document.createElement('div');
   inner.style.cssText = [
@@ -239,17 +241,8 @@ function makePrintCoverEl(w, h, cv2){
   if(cv2.bgImage){
     const bgImg = document.createElement('img');
     bgImg.src = cv2.bgImage;
-    bgImg.style.cssText = [
-      'position:absolute',
-      'top:0', 'left:0',
-      'width:100%',
-      'height:100%',
-      'object-fit:cover',
-      'object-position:center',
-      'z-index:0'
-    ].join(';');
+    bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
     inner.appendChild(bgImg);
-
     const ov = document.createElement('div');
     ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1';
     inner.appendChild(ov);
@@ -289,14 +282,7 @@ function makePrintCoverEl(w, h, cv2){
 
   const titleEl = document.createElement('div');
   const titleFontSize = titleStyle === 'dramatic' ? '36pt' : titleStyle === 'poster' ? '28pt' : titleStyle === 'essay' ? '22pt' : '28pt';
-  titleEl.style.cssText = [
-    'font-size:' + titleFontSize,
-    'font-weight:900',
-    'line-height:1.2',
-    'color:#fff',
-    'text-shadow:0 2px 18px rgba(0,0,0,.9)',
-    'word-break:keep-all'
-  ].join(';');
+  titleEl.style.cssText = 'font-size:' + titleFontSize + ';font-weight:900;line-height:1.2;color:#fff;text-shadow:0 2px 18px rgba(0,0,0,.9);word-break:keep-all';
   titleEl.textContent = cv2.title || '책 제목';
   tw.appendChild(titleEl);
 
@@ -383,8 +369,8 @@ function makePrintBackCoverEl(w, h, bc2, cv2){
   return inner;
 }
 
-// ── 5. exportPDF 함수 오버라이드 (본문 PDF) ──────
-const _origExportPDF = window.exportPDF;
+
+// ── 5. 본문 PDF 출력 (v6 동일) ────────────────────
 window.exportPDF = function(){
   const {w, h} = fmt();
   const mm = v => v + 'mm';
@@ -409,15 +395,10 @@ window.exportPDF = function(){
 
     if(pg.type === 'cover'){
       div.appendChild(makePrintCoverEl(w, h, S.cover));
-
     } else if(pg.type === 'backcover'){
       div.appendChild(makePrintBackCoverEl(w, h, S.backCover, S.cover));
-
     } else if(pg.type === 'endpaper'){
       div.style.background = S.endpaper.color || '#f5f0e8';
-      const ep = document.createElement('div');
-      ep.style.cssText = 'position:absolute;left:-9999px;top:0;width:' + mm(w) + ';height:' + mm(h);
-      offscreen.appendChild(ep);
       const cvs = document.createElement('canvas');
       cvs.width = 200; cvs.height = Math.round(200 * h / w);
       const PATTERNS = window.PATTERNS;
@@ -429,7 +410,6 @@ window.exportPDF = function(){
         imgEl.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';object-fit:cover';
         div.appendChild(imgEl);
       }
-
     } else {
       const cp = document.createElement('div');
       cp.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden;background:#fff';
@@ -498,12 +478,18 @@ window.exportPDF = function(){
 };
 
 
-// ── 6. 표지 펼침 PDF 함수 (부크크 규격 + 재단 여유 자동 적용) ──
+// ★★ ── 6. 표지 펼침 PDF (v7 핵심 수정) ────────── ★★
+//
+// 수정 사항:
+//  ① 책등 텍스트: padding 제거 + 폰트 비율 0.55→0.45 → 정확히 중앙 정렬
+//  ② 재단여백 3mm 영역: 앞표지/뒤표지 외곽을 BLEED만큼 확장하여
+//     배경 이미지가 사방 끝까지 꽉차게 채워지도록 변경
+//     (텍스트/시놉시스 등 콘텐츠는 안전 영역(trim) 안쪽에 유지)
+//
 window.exportCoverSpreadPDF = function(){
   const {w, h} = fmt();
   const spineW = calcSpineWidth();
-  const BLEED = 3;  // 재단 여유 사방 3mm (부크크 권장)
-  const innerW = Math.round((w * 2 + spineW) * 10) / 10;
+  const BLEED = 3;  // 사방 재단 여유 3mm
   const totalW = Math.round((w * 2 + spineW + BLEED * 2) * 10) / 10;
   const totalH = Math.round((h + BLEED * 2) * 10) / 10;
   const mm = v => v + 'mm';
@@ -512,41 +498,77 @@ window.exportCoverSpreadPDF = function(){
   pw.innerHTML = '';
   pw.style.display = 'block';
 
-  // 외곽 wrapper (재단 여유 포함된 전체 영역, 책 배경색으로 채워짐)
+  // 외곽 wrapper — 전체 영역, fallback 배경색
   const outerWrap = document.createElement('div');
   outerWrap.className = 'print-pg';
   outerWrap.style.cssText = 'position:relative;margin:0;padding:0;overflow:hidden;width:' + mm(totalW) + ';height:' + mm(totalH) + ';background:' + (S.backCover.bgColor || '#2c3e50');
 
-  // 안쪽 spread (실제 콘텐츠, BLEED만큼 안쪽에 배치)
-  const spread = document.createElement('div');
-  spread.style.cssText = 'position:absolute;top:' + mm(BLEED) + ';left:' + mm(BLEED) + ';display:flex;width:' + mm(innerW) + ';height:' + mm(h) + ';overflow:hidden';
+  // === ① 뒤표지 영역 (왼쪽/위/아래 3mm 재단여백 포함) ===
+  // 배경 이미지는 영역 전체를 채우고, 텍스트는 안전 영역에만 배치
+  const bcArea = document.createElement('div');
+  bcArea.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w + BLEED) + ';height:' + mm(totalH) + ';overflow:hidden;background:' + (S.backCover.bgColor || '#2c3e50');
 
-  // ① 뒤표지
-  const bcWrap = document.createElement('div');
-  bcWrap.style.cssText = 'position:relative;flex-shrink:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden';
-  bcWrap.appendChild(makePrintBackCoverEl(w, h, S.backCover, S.cover));
-  spread.appendChild(bcWrap);
+  if(S.backCover.bgImage){
+    const bgImg = document.createElement('img');
+    bgImg.src = S.backCover.bgImage;
+    bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
+    bcArea.appendChild(bgImg);
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.55);z-index:1';
+    bcArea.appendChild(ov);
+  }
 
-  // ② 등
-  const spine = document.createElement('div');
-  const sfPx = Math.max(Math.round(spineW * 3.7795 * 0.55), 7);
-  spine.style.cssText = 'flex-shrink:0;overflow:hidden;display:flex;align-items:center;justify-content:center;width:' + mm(spineW) + ';height:' + mm(h) + ';background:' + (S.backCover.bgColor || '#2c3e50') + ';filter:brightness(.82)';
+  // 뒤표지 콘텐츠 — 안전 영역에만 배치 (배경 이미지/색은 영역에서 이미 깔리므로 끔)
+  const bcContent = makePrintBackCoverEl(w, h, Object.assign({}, S.backCover, {bgImage: null, bgColor: 'transparent'}), S.cover);
+  bcContent.style.top = mm(BLEED);
+  bcContent.style.left = mm(BLEED);
+  bcContent.style.zIndex = '2';
+  bcArea.appendChild(bcContent);
+
+  outerWrap.appendChild(bcArea);
+
+  // === ② 책등 영역 (위/아래 재단여백 포함) ===
+  // 책등 텍스트: padding 제거 + 폰트 비율 축소로 정확히 중앙 정렬
+  const spineArea = document.createElement('div');
+  spineArea.style.cssText = 'position:absolute;top:0;left:' + mm(w + BLEED) + ';width:' + mm(spineW) + ';height:' + mm(totalH) + ';background:' + (S.backCover.bgColor || '#2c3e50') + ';filter:brightness(.82);display:flex;align-items:center;justify-content:center;overflow:hidden';
+
+  // ★ 폰트 비율 0.55 → 0.45 로 축소 (좁은 책등에서 글자가 잘리지 않도록)
+  const sfPx = Math.max(Math.round(spineW * 3.7795 * 0.45), 7);
   const st = document.createElement('div');
-  st.style.cssText = 'writing-mode:vertical-rl;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:' + sfPx + 'px;color:' + (S.backCover.textColor || '#fff') + ';padding:2mm;max-height:' + (h * 0.92) + 'mm';
+  // ★ padding:2mm 제거 → flex 중앙 정렬이 정확히 작동
+  // ★ text-align:center 추가 → 세로 텍스트의 inline 방향(위→아래)으로도 중앙 정렬
+  st.style.cssText = 'writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;font-size:' + sfPx + 'px;color:' + (S.backCover.textColor || '#fff') + ';text-align:center;max-height:' + (h * 0.85) + 'mm;overflow:hidden';
   st.textContent = S.cover.title + (S.cover.author ? ' — ' + S.cover.author : '');
-  spine.appendChild(st);
-  spread.appendChild(spine);
+  spineArea.appendChild(st);
+  outerWrap.appendChild(spineArea);
 
-  // ③ 앞표지
-  const cvWrap = document.createElement('div');
-  cvWrap.style.cssText = 'position:relative;flex-shrink:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden';
-  cvWrap.appendChild(makePrintCoverEl(w, h, S.cover));
-  spread.appendChild(cvWrap);
+  // === ③ 앞표지 영역 (오른쪽/위/아래 3mm 재단여백 포함) ===
+  const fcArea = document.createElement('div');
+  fcArea.style.cssText = 'position:absolute;top:0;left:' + mm(w + BLEED + spineW) + ';width:' + mm(w + BLEED) + ';height:' + mm(totalH) + ';overflow:hidden;background:' + (S.cover.bgColor || '#2c3e50');
 
-  outerWrap.appendChild(spread);
+  if(S.cover.bgImage){
+    const bgImg = document.createElement('img');
+    bgImg.src = S.cover.bgImage;
+    bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
+    fcArea.appendChild(bgImg);
+    const ov = document.createElement('div');
+    ov.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.45);z-index:1';
+    fcArea.appendChild(ov);
+  }
+
+  // 앞표지 콘텐츠 — 안전 영역에만 배치
+  // (왼쪽은 책등과 맞닿는 trim 경계이므로 left=0, 오른쪽 BLEED는 외곽으로 잘림)
+  const fcContent = makePrintCoverEl(w, h, Object.assign({}, S.cover, {bgImage: null, bgColor: 'transparent'}));
+  fcContent.style.top = mm(BLEED);
+  fcContent.style.left = '0';
+  fcContent.style.zIndex = '2';
+  fcArea.appendChild(fcContent);
+
+  outerWrap.appendChild(fcArea);
+
   pw.appendChild(outerWrap);
 
-  // ★ @page size 강제 + 브라우저 기본 여백/스케일 모두 차단
+  // @page size + 여백 0 강제
   let style = document.getElementById('print-style');
   if(!style){ style = document.createElement('style'); style.id = 'print-style'; document.head.appendChild(style); }
   style.textContent = `
@@ -566,11 +588,11 @@ window.exportCoverSpreadPDF = function(){
     setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 600);
   }, 300);
 
-  if(window.notify) notify('표지 PDF — ' + totalW + ' × ' + totalH + 'mm (콘텐츠 ' + innerW + 'mm + 재단여유 사방 ' + BLEED + 'mm)');
+  if(window.notify) notify('표지 PDF v7 — ' + totalW + ' × ' + totalH + 'mm (재단여백 3mm 배경 꽉채움 + 책등 정중앙)');
 };
 
 
-// ── 7. 툴바에 표지PDF 버튼 추가 ───────────────────
+// ── 7. 툴바 표지PDF 버튼 (v6 동일) ────────────────
 (function addSpreadButton(){
   const btns = document.querySelectorAll('#toolbar button');
   let pdfBtn = null;
@@ -580,11 +602,11 @@ window.exportCoverSpreadPDF = function(){
     coverBtn.id = 'btn-cover-spread';
     coverBtn.className = 'tb';
     coverBtn.style.color = '#f4a636';
-    coverBtn.title = '뒤표지+등+앞표지 펼침 PDF 출력 (부크크 업로드용 — 재단 여유 자동 포함)';
+    coverBtn.title = '뒤표지+등+앞표지 펼침 PDF 출력 (부크크 업로드용 — 재단 여유 + 책등 정중앙)';
     coverBtn.textContent = '📄 표지PDF';
     coverBtn.onclick = () => exportCoverSpreadPDF();
     pdfBtn.parentNode.insertBefore(coverBtn, pdfBtn.nextSibling);
   }
 })();
 
-console.log('✅ Publoo 패치 v6 완료! 부크크 규격 + 재단 여유 자동 적용');
+console.log('✅ Publoo 패치 v7 완료! 책등 정중앙 정렬 + 재단여백 3mm 배경 꽉채움');
