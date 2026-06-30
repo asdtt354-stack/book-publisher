@@ -1,16 +1,14 @@
 // =====================================================
-// Publoo 앱 통합 패치 스크립트 v9
-// v7 + v8 통합 + 페이지수 박스 안정성 개선
+// Publoo 앱 통합 패치 스크립트 v10
+// v9 기반 + 책등 글자 깔끔하게 (제목만)
 //
-// 포함 기능:
-//   ✅ v7의 모든 기능: 이미지 자유 드래그, 페이지수 직접 입력,
-//      표지 PDF 책등 정중앙 정렬, 재단여백 3mm 배경 꽉채움
-//   ✅ v8의 모든 기능: 0.068mm 부크크 옵션, 사용자 정의 두께 입력
-//   ✅ v9 개선: 페이지수 박스 fallback (어떤 상황에서도 표시 보장)
+// 변경 사항 (v9 → v10):
+//   ✅ 책등 텍스트에서 " — 박성애" 부분 제거
+//   ✅ 책등에는 책 제목만 깔끔하게 표시
+//   ✅ 그 외 v9의 모든 기능 동일 (페이지수 입력 + 두께 사용자 정의 + 정중앙 정렬)
 //
-// 적용 방법: HTML에서 이 파일 하나만 로드
-//   <script src="publoo_patch_v9.js"></script>
-//   기존 v7, v8 script 태그는 모두 삭제
+// 적용 방법: HTML에서 v9를 v10으로 교체
+//   <script src="publoo_patch_v10.js"></script>
 // =====================================================
 
 // ── 1. 드래그 스타일 추가 ───────────────
@@ -143,21 +141,11 @@ window.insertImageData = function(src, i){
 };
 
 
-// ── 3. 뒤표지 모달 입력 박스들 (v9 통합 - 페이지수 + 두께 모두 책임) ───
-//
-// v9 개선: 단일 옵저버에서 두 박스를 모두 안전하게 보장
-//   ① 페이지수 직접 입력 박스 (v7 기능)
-//   ② 용지 두께 사용자 정의 + 0.068mm 옵션 (v8 기능)
-//
+// ── 3. 뒤표지 모달 입력 박스들 ───
 function ensurePageCountBox(){
-  // 페이지수 박스 강제 생성/보장
   const spineCalc = document.getElementById('spine-calc');
   const paperSel = document.getElementById('bc-paper-thick');
-
-  // 이미 있으면 통과
   if(document.getElementById('manual-page-count-wrap')) return true;
-
-  // 둘 다 없으면 모달이 안 열린 상태 → 다음 mutation 기다림
   if(!spineCalc && !paperSel) return false;
 
   const wrap = document.createElement('div');
@@ -178,7 +166,6 @@ function ensurePageCountBox(){
     <div style="font-size:10px;color:#666;margin-top:4px">표지만 작업할 때 본문 페이지 수를 입력하면 책등 너비가 정확하게 계산됩니다</div>
   `;
 
-  // 위치: spine-calc 앞이 최우선, 없으면 paperSel 부모 맨 위에 prepend
   if(spineCalc){
     spineCalc.parentNode.insertBefore(wrap, spineCalc);
   } else if(paperSel){
@@ -188,7 +175,6 @@ function ensurePageCountBox(){
     return false;
   }
 
-  // 저장된 값 복원
   if(window.S && window.S.backCover && window.S.backCover._manualPageCount){
     const inp = document.getElementById('manual-page-count');
     const res = document.getElementById('manual-spine-result');
@@ -212,9 +198,8 @@ function ensurePaperThickBox(){
   const sel = document.getElementById('bc-paper-thick');
   if(!sel) return false;
 
-  // 부크크 실측값 옵션 추가 (없을 때만)
-  if(!sel.dataset.publooV9){
-    sel.dataset.publooV9 = '1';
+  if(!sel.dataset.publooV10){
+    sel.dataset.publooV10 = '1';
     const hasBookkOption = Array.from(sel.options).some(o => o.value === '0.0683');
     if(!hasBookkOption){
       const opt = document.createElement('option');
@@ -232,7 +217,6 @@ function ensurePaperThickBox(){
     }
   }
 
-  // 사용자 정의 입력 박스 (없을 때만)
   if(!document.getElementById('bc-paper-thick-custom-wrap')){
     const wrap = document.createElement('div');
     wrap.id = 'bc-paper-thick-custom-wrap';
@@ -257,25 +241,18 @@ function ensurePaperThickBox(){
   return true;
 }
 
-// 통합 옵저버 — 모달이 열릴 때마다 두 박스 모두 보장
 (function setupBoxObserver(){
   const tryEnsure = () => {
     try {
       ensurePageCountBox();
       ensurePaperThickBox();
     } catch(e){
-      console.warn('Publoo v9 박스 생성 중 오류:', e);
+      console.warn('Publoo v10 박스 생성 중 오류:', e);
     }
   };
-
-  // 초기 1회 시도
   tryEnsure();
-
-  // 옵저버: body의 모든 mutation 감지 → 박스 보장
   const observer = new MutationObserver(tryEnsure);
   observer.observe(document.body, { childList: true, subtree: true });
-
-  // 추가 안전장치: 일정 시간마다 체크 (모달이 열린 후 한 번 더 보장)
   setInterval(() => {
     if(document.getElementById('spine-calc') || document.getElementById('bc-paper-thick')){
       tryEnsure();
@@ -406,18 +383,13 @@ window.calcSpineWidth = function(){
 };
 
 
-// ── 7. PDF 출력 표지 요소 함수 (v7 동일) ─────────
+// ── 7. PDF 출력 표지 요소 함수 ─────────
 function makePrintCoverEl(w, h, cv2){
   const mm = v => v + 'mm';
-
   const inner = document.createElement('div');
   inner.style.cssText = [
-    'position:absolute',
-    'top:0', 'left:0',
-    'width:' + mm(w),
-    'height:' + mm(h),
-    'overflow:hidden',
-    'background-color:' + (cv2.bgColor || '#2c3e50')
+    'position:absolute','top:0','left:0','width:' + mm(w),'height:' + mm(h),
+    'overflow:hidden','background-color:' + (cv2.bgColor || '#2c3e50')
   ].join(';');
 
   if(cv2.bgImage){
@@ -440,27 +412,10 @@ function makePrintCoverEl(w, h, cv2){
   if(titleStyle === 'essay'){ justifyContent = 'flex-end'; }
   if(titleStyle === 'top'){ justifyContent = 'flex-start'; alignItems = 'center'; textAlign = 'center'; }
 
-  body.style.cssText = [
-    'position:relative',
-    'z-index:2',
-    'width:100%',
-    'height:100%',
-    'display:flex',
-    'flex-direction:column',
-    'padding:18mm 14mm 12mm',
-    'box-sizing:border-box'
-  ].join(';');
+  body.style.cssText = ['position:relative','z-index:2','width:100%','height:100%','display:flex','flex-direction:column','padding:18mm 14mm 12mm','box-sizing:border-box'].join(';');
 
   const tw = document.createElement('div');
-  tw.style.cssText = [
-    'flex:1',
-    'display:flex',
-    'flex-direction:column',
-    'justify-content:' + justifyContent,
-    'align-items:' + alignItems,
-    'text-align:' + textAlign,
-    'gap:5pt'
-  ].join(';');
+  tw.style.cssText = ['flex:1','display:flex','flex-direction:column','justify-content:' + justifyContent,'align-items:' + alignItems,'text-align:' + textAlign,'gap:5pt'].join(';');
 
   const titleEl = document.createElement('div');
   const titleFontSize = titleStyle === 'dramatic' ? '36pt' : titleStyle === 'poster' ? '28pt' : titleStyle === 'essay' ? '22pt' : '28pt';
@@ -492,17 +447,8 @@ function makePrintCoverEl(w, h, cv2){
 
 function makePrintBackCoverEl(w, h, bc2, cv2){
   const mm = v => v + 'mm';
-
   const inner = document.createElement('div');
-  inner.style.cssText = [
-    'position:absolute',
-    'top:0', 'left:0',
-    'width:' + mm(w),
-    'height:' + mm(h),
-    'overflow:hidden',
-    'background-color:' + (bc2.bgColor || '#2c3e50'),
-    'color:' + (bc2.textColor || '#fff')
-  ].join(';');
+  inner.style.cssText = ['position:absolute','top:0','left:0','width:' + mm(w),'height:' + mm(h),'overflow:hidden','background-color:' + (bc2.bgColor || '#2c3e50'),'color:' + (bc2.textColor || '#fff')].join(';');
 
   if(bc2.bgImage){
     const bgImg = document.createElement('img');
@@ -515,17 +461,7 @@ function makePrintBackCoverEl(w, h, bc2, cv2){
   }
 
   const body = document.createElement('div');
-  body.style.cssText = [
-    'position:relative',
-    'z-index:2',
-    'width:100%',
-    'height:100%',
-    'display:flex',
-    'flex-direction:column',
-    'padding:14mm 13mm 10mm',
-    'box-sizing:border-box',
-    'color:' + (bc2.textColor || '#fff')
-  ].join(';');
+  body.style.cssText = ['position:relative','z-index:2','width:100%','height:100%','display:flex','flex-direction:column','padding:14mm 13mm 10mm','box-sizing:border-box','color:' + (bc2.textColor || '#fff')].join(';');
 
   body.innerHTML = `
     <div style="flex:1;overflow:hidden">
@@ -552,11 +488,10 @@ function makePrintBackCoverEl(w, h, bc2, cv2){
 }
 
 
-// ── 8. 본문 PDF 출력 (v7 동일) ────────────────────
+// ── 8. 본문 PDF 출력 ────────────────────
 window.exportPDF = function(){
   const {w, h} = fmt();
   const mm = v => v + 'mm';
-
   const pw = document.getElementById('print-wrap');
   pw.innerHTML = '';
   pw.style.display = 'block';
@@ -570,11 +505,9 @@ window.exportPDF = function(){
       const txt = (pg.content || '').replace(/<[^>]+>/g, '').trim();
       if(!txt) return;
     }
-
     const div = document.createElement('div');
     div.className = 'print-pg';
     div.style.cssText = 'width:' + mm(w) + ';height:' + mm(h) + ';position:relative;overflow:hidden;background:#fff;box-sizing:border-box';
-
     if(pg.type === 'cover'){
       div.appendChild(makePrintCoverEl(w, h, S.cover));
     } else if(pg.type === 'backcover'){
@@ -595,39 +528,23 @@ window.exportPDF = function(){
     } else {
       const cp = document.createElement('div');
       cp.style.cssText = 'position:absolute;top:0;left:0;width:' + mm(w) + ';height:' + mm(h) + ';overflow:hidden;background:#fff';
-
       if(pg.bgImage){
         const bgImg = document.createElement('img');
         bgImg.src = pg.bgImage;
         bgImg.style.cssText = 'position:absolute;top:0;left:0;width:100%;height:100%;object-fit:cover;object-position:center;z-index:0';
         cp.appendChild(bgImg);
       }
-
       const margins = (idx) => {
         const m = S.margins;
         const isOdd = idx % 2 !== 0;
         return { top:m.top, bot:m.bot, left:isOdd?m.inner:m.outer, right:isOdd?m.outer:m.inner };
       };
       const m = margins(i);
-
       const textDiv = document.createElement('div');
       textDiv.className = 'pg-content';
-      textDiv.style.cssText = [
-        'position:absolute',
-        'top:' + mm(m.top),
-        'bottom:' + mm(m.bot),
-        'left:' + mm(m.left),
-        'right:' + mm(m.right),
-        'font-family:\'' + S.font.family + '\',serif',
-        'font-size:' + S.font.size + 'pt',
-        'line-height:' + S.font.lh,
-        'color:#1a1a1a',
-        'overflow:hidden',
-        'z-index:1'
-      ].join(';');
+      textDiv.style.cssText = ['position:absolute','top:' + mm(m.top),'bottom:' + mm(m.bot),'left:' + mm(m.left),'right:' + mm(m.right),'font-family:\'' + S.font.family + '\',serif','font-size:' + S.font.size + 'pt','line-height:' + S.font.lh,'color:#1a1a1a','overflow:hidden','z-index:1'].join(';');
       textDiv.innerHTML = pg.content || '';
       cp.appendChild(textDiv);
-
       const getPageNumStr = window.getPageNumStr;
       if(getPageNumStr){
         const pn = getPageNumStr(i);
@@ -641,26 +558,22 @@ window.exportPDF = function(){
       }
       div.appendChild(cp);
     }
-
     pw.appendChild(div);
   });
 
   document.body.removeChild(offscreen);
-
   let style = document.getElementById('print-style');
   if(!style){ style = document.createElement('style'); style.id = 'print-style'; document.head.appendChild(style); }
   style.textContent = '@media print{@page{size:' + mm(w) + ' ' + mm(h) + ' portrait;margin:0}body>*:not(#print-wrap){display:none!important}#print-wrap{display:block!important;background:#fff!important}.print-pg{page-break-after:always;page-break-inside:avoid;position:relative;background:#fff!important}.print-pg:last-child{page-break-after:avoid!important}.pg-sec-badge,.page-label,.img-drag-del,.img-drag-resize,.img-drag-handle,.img-center-btn{display:none!important}*{-webkit-print-color-adjust:exact!important;print-color-adjust:exact!important}}';
-
   setTimeout(() => {
     window.print();
     setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 500);
   }, 300);
-
   if(window.notify) notify('PDF 인쇄 창을 열었습니다. "PDF로 저장"을 선택하세요.');
 };
 
 
-// ── 9. 표지 펼침 PDF (v7 핵심 — 책등 정중앙 + 재단여백 3mm) ──
+// ★★ ── 9. 표지 펼침 PDF (v10 — 책등 글자에서 — 박성애 제거) ★★
 window.exportCoverSpreadPDF = function(){
   const {w, h} = fmt();
   const spineW = calcSpineWidth();
@@ -699,14 +612,18 @@ window.exportCoverSpreadPDF = function(){
 
   outerWrap.appendChild(bcArea);
 
-  // 책등 영역 (정중앙 정렬)
+  // 책등 영역 (v10: 제목만, " — 박성애" 제거)
   const spineArea = document.createElement('div');
   spineArea.style.cssText = 'position:absolute;top:0;left:' + mm(w + BLEED) + ';width:' + mm(spineW) + ';height:' + mm(totalH) + ';background:' + (S.backCover.bgColor || '#2c3e50') + ';filter:brightness(.82);display:flex;align-items:center;justify-content:center;overflow:hidden';
 
-  const sfPx = Math.max(Math.round(spineW * 3.7795 * 0.45), 7);
+  // 책등 폰트 크기 (제목만이라 좀 더 크게 가능: 0.45 → 0.5)
+  const sfPx = Math.max(Math.round(spineW * 3.7795 * 0.5), 7);
   const st = document.createElement('div');
-  st.style.cssText = 'writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;font-size:' + sfPx + 'px;color:' + (S.backCover.textColor || '#fff') + ';text-align:center;max-height:' + (h * 0.85) + 'mm;overflow:hidden';
-  st.textContent = S.cover.title + (S.cover.author ? ' — ' + S.cover.author : '');
+  st.style.cssText = 'writing-mode:vertical-rl;text-orientation:mixed;white-space:nowrap;font-size:' + sfPx + 'px;color:' + (S.backCover.textColor || '#fff') + ';text-align:center;max-height:' + (h * 0.85) + 'mm;overflow:hidden;font-weight:700';
+  
+  // ★ v10 핵심 변경: 책등은 책 제목만 (저자명 제외, "—" 제거)
+  st.textContent = S.cover.title || '코딩은 몰라요';
+  
   spineArea.appendChild(st);
   outerWrap.appendChild(spineArea);
 
@@ -753,7 +670,7 @@ window.exportCoverSpreadPDF = function(){
     setTimeout(() => { pw.style.display = 'none'; pw.innerHTML = ''; }, 600);
   }, 300);
 
-  if(window.notify) notify('표지 PDF v9 — ' + totalW + ' × ' + totalH + 'mm (책등 ' + spineW + 'mm + 재단 3mm)');
+  if(window.notify) notify('표지 PDF v10 — 책등은 제목만 (' + totalW + ' × ' + totalH + 'mm)');
 };
 
 
@@ -775,13 +692,12 @@ window.exportCoverSpreadPDF = function(){
     }
   };
   tryAdd();
-  // 툴바가 늦게 로드될 경우를 위한 옵저버
   const obs = new MutationObserver(tryAdd);
   obs.observe(document.body, { childList: true, subtree: true });
 })();
 
 
-console.log('✅ Publoo 통합 패치 v9 로드 완료!');
-console.log('   📄 페이지수 입력 박스 + ⚙️ 두께 사용자 정의 박스 동시 표시');
-console.log('   ⭐ 0.0683mm (부크크 실측 컬러/100g) 옵션 자동 추가');
-console.log('   🎯 책등 정중앙 정렬 + 재단여백 3mm 배경 꽉채움');
+console.log('✅ Publoo 통합 패치 v10 로드 완료!');
+console.log('   📚 책등은 책 제목만 (저자명 제거 — 세로줄 문제 해결)');
+console.log('   📄 페이지수 박스 + ⚙️ 두께 사용자 정의 박스');
+console.log('   ⭐ 0.0683mm (부크크 실측 컬러/100g) 옵션');
