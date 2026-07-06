@@ -1,5 +1,22 @@
 // =====================================================
-// Publoo 앱 통합 패치 스크립트 v11 (완전판 — v10 병합)
+// ⭐ Publoo 통합 패치 — 전체 합본판 (v11 + 책등너비직접입력 + 보안패치 + 텍스트되돌리기 + 되돌리기버튼개선 + 후기버튼)
+//
+// 이 파일 하나만 있으면 됩니다. 기존 publoo_patch.js를
+// 이 파일로 통째로 교체(덮어쓰기)하세요.
+// HTML은 그대로: <script src="publoo_patch.js"></script>
+//
+// 포함된 기능:
+//  1) v11 — 이미지 드래그, 페이지수/두께 직접입력, 표지PDF
+//  2) 책등 너비(mm) 직접 입력 — 인쇄소 확정값 최우선 적용
+//  3) 보안 패치 — .bookpub 파일 불러오기 시 악성 콘텐츠 자동 정제
+//  4) 텍스트 입력 되돌리기 — 타이핑 멈춘 후 자동 스냅샷(Ctrl+Z 지원)
+//  5) 되돌리기/다시실행 버튼을 툴바 맨 앞으로 이동 + 글자 라벨 추가
+//  6) "💬 후기 남기기" 버튼 — 구글 폼으로 연결 (아래 GOOGLE_FORM_URL 수정 필요)
+// =====================================================
+
+
+// =====================================================
+// [1/3] Publoo 앱 통합 패치 스크립트 v11 (완전판 — v10 병합)
 // v10의 모든 기능 + 책등에 저자명 복원
 //
 // 변경 사항 (v10 → v11):
@@ -718,3 +735,413 @@ console.log('✅ Publoo 통합 패치 v11 로드 완료!');
 console.log('   📚 책등: 제목(크게) + "OOO 지음"(작게) — 저자명 복원');
 console.log('   📄 페이지수 박스 + ⚙️ 두께 사용자 정의 박스');
 console.log('   ⭐ 0.0683mm (부크크 실측 컬러/100g) 옵션');
+// =====================================================
+// [2/3]
+// Publoo 패치 v12 추가분 — 책등 너비(mm) 직접 입력
+//
+// 목적: 부크크 등 인쇄소가 실측/확정해준 책등 너비를
+//       페이지수×두께 계산 없이 그대로 입력해서 쓰기 위함.
+//
+// 우선순위: 책등 너비 직접 입력 > 페이지수×두께 계산값
+//
+// 적용 방법: 기존 publoo_patch.js(v11) 파일 맨 아래에
+//           이 코드를 그대로 이어 붙이면 됩니다.
+//           (HTML의 <script src="publoo_patch.js"> 그대로 유지)
+// =====================================================
+
+(function(){
+
+  // ── 1. 입력 박스 생성 ──────────────────────────────
+  function ensureSpineWidthBox(){
+    const spineCalc = document.getElementById('spine-calc');
+    if(!spineCalc) return false;
+    if(document.getElementById('manual-spine-width-wrap')) return true;
+
+    const wrap = document.createElement('div');
+    wrap.id = 'manual-spine-width-wrap';
+    wrap.style.cssText = 'margin-bottom:8px;padding:8px;background:rgba(233,69,96,.08);border:1px solid rgba(233,69,96,.3);border-radius:5px';
+    wrap.innerHTML = `
+      <div style="font-size:11px;color:#e94560;font-weight:bold;margin-bottom:6px">📏 책등 너비(mm) 직접 입력 <span style="font-weight:normal;color:#999">— 인쇄소 확정값 우선 적용</span></div>
+      <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+        <input type="number" id="manual-spine-width" step="0.1" min="1" max="100" placeholder="예: 8.5"
+          style="width:80px;background:#252540;border:1px solid #444;color:#fff;padding:4px 8px;border-radius:4px;font-size:12px;font-family:inherit">
+        <span style="font-size:11px;color:#aaa">mm</span>
+        <button onclick="applyManualSpineWidth()"
+          style="background:#e94560;border:none;color:#fff;padding:4px 12px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit">
+          적용
+        </button>
+        <button onclick="clearManualSpineWidth()"
+          style="background:transparent;border:1px solid #555;color:#aaa;padding:4px 10px;border-radius:4px;font-size:11px;cursor:pointer;font-family:inherit">
+          해제 (자동계산으로)
+        </button>
+      </div>
+      <div style="font-size:10px;color:#999;margin-top:4px">※ 값을 입력하면 아래 페이지수×두께 계산은 무시되고 이 값이 그대로 사용됩니다</div>
+    `;
+    spineCalc.parentNode.insertBefore(wrap, spineCalc);
+
+    // 기존 저장값 복원
+    if(window.S && S.backCover && S.backCover._directSpineW){
+      const inp = document.getElementById('manual-spine-width');
+      if(inp) inp.value = S.backCover._directSpineW;
+      updateSpineDisplays(S.backCover._directSpineW, true);
+    }
+    return true;
+  }
+
+  // ── 2. 화면 반영 헬퍼 ──────────────────────────────
+  function updateSpineDisplays(spineW, isDirect){
+    const spineCalc = document.getElementById('spine-calc');
+    if(spineCalc){
+      spineCalc.textContent = isDirect
+        ? `책등 너비: ${spineW}mm (직접 입력값 사용 중)`
+        : spineCalc.textContent;
+    }
+    const spineEl = document.getElementById('bc-prev-spine');
+    if(spineEl) spineEl.style.width = Math.max(spineW * 2, 6) + 'px';
+  }
+
+  // ── 3. 적용 / 해제 함수 ────────────────────────────
+  window.applyManualSpineWidth = function(){
+    const inp = document.getElementById('manual-spine-width');
+    const val = parseFloat(inp.value);
+    if(!val || val < 1 || val > 100){
+      if(window.notify) notify('1~100mm 범위로 정확한 책등 너비를 입력해주세요');
+      return;
+    }
+    window._publoo_directSpineW = val;
+    if(window.S && S.backCover){
+      S.backCover._directSpineW = val;
+      // 페이지수 기반 값과 충돌하지 않도록 별도 필드에 저장 (기존 _manualSpineW는 건드리지 않음)
+    }
+    updateSpineDisplays(val, true);
+    const manualResult = document.getElementById('manual-spine-result');
+    if(manualResult){ manualResult.textContent = ''; }
+    if(window.notify) notify(`책등 너비 ${val}mm 직접 적용됨 (인쇄소 확정값)`);
+  };
+
+  window.clearManualSpineWidth = function(){
+    window._publoo_directSpineW = null;
+    if(window.S && S.backCover){ delete S.backCover._directSpineW; }
+    const inp = document.getElementById('manual-spine-width');
+    if(inp) inp.value = '';
+    // 자동 계산값으로 되돌리기 위해 재계산 트리거
+    if(typeof previewBackCover === 'function') previewBackCover();
+    if(window.notify) notify('직접 입력 해제 — 자동 계산 값으로 복귀');
+  };
+
+  // ── 4. calcSpineWidth 최종 오버라이드 (최우선순위 부여) ──
+  const _prevCalc = window.calcSpineWidth;
+  window.calcSpineWidth = function(){
+    if(window._publoo_directSpineW) return window._publoo_directSpineW;
+    if(window.S && S.backCover && S.backCover._directSpineW) return S.backCover._directSpineW;
+    if(typeof _prevCalc === 'function') return _prevCalc();
+    return 8; // fallback
+  };
+
+  // ── 5. 감시자 — 모달 열릴 때마다 박스 보장 ─────────
+  const tryEnsure = () => { try{ ensureSpineWidthBox(); }catch(e){} };
+  tryEnsure();
+  const observer = new MutationObserver(tryEnsure);
+  observer.observe(document.body, { childList: true, subtree: true });
+  setInterval(() => { if(document.getElementById('spine-calc')) tryEnsure(); }, 1500);
+
+  console.log('✅ 책등 너비 직접 입력 기능(v12 addon) 로드 완료 — 인쇄소 확정값 우선 적용 가능');
+})();
+// =====================================================
+// [3/3]
+// Publoo 보안 패치 — .bookpub 파일 불러오기 시 콘텐츠 정제
+//
+// 문제: onProjectLoaded()가 불러온 JSON의 pg.content를
+//       그대로 innerHTML에 넣고 있어서, 만약 다른 사람이
+//       만든(또는 조작된) .bookpub 파일을 열면 그 안에 담긴
+//       <script>, onerror=, onload= 같은 악성 코드가
+//       그대로 실행될 수 있음.
+//
+// 해결: 파일을 불러온 직후, 모든 페이지의 content를
+//       sanitizeLoadedContent()로 한 번 정제한 뒤 적용.
+//       (본문 편집 중 붙여넣기에 쓰던 cleanPasteHtml과
+//        같은 화이트리스트 방식 재사용)
+//
+// 적용 방법: publoo_patch.js 맨 아래에 이어 붙이면 됩니다.
+//           (v11, v12 addon 다음에 이어 붙여도 무방)
+// =====================================================
+
+(function(){
+
+  // ── 1. 정제 함수 ───────────────────────────────────
+  // 허용 태그만 남기고, 태그가 아니면 즉시 위험 요소로 간주해 제거
+  const ALLOWED_TAGS = new Set([
+    'P','H1','H2','H3','B','STRONG','I','EM','U','S','DEL','INS',
+    'SUB','SUP','SPAN','FIGURE','FIGCAPTION','IMG','TABLE','TBODY',
+    'THEAD','TR','TD','TH','BR','UL','OL','LI','A','DIV'
+  ]);
+  // 허용 속성만 남김 (이벤트 핸들러 on* 은 전부 제거)
+  const ALLOWED_ATTRS = new Set(['src','alt','style','class','href','colspan','rowspan']);
+
+  function sanitizeNode(node){
+    // 요소가 아니면 (텍스트 노드 등) 그대로 둠
+    if(node.nodeType !== 1) return;
+
+    // 허용 안 된 태그 → 통째로 제거 (script, iframe, object, embed, svg 등)
+    if(!ALLOWED_TAGS.has(node.tagName)){
+      node.remove();
+      return;
+    }
+
+    // 속성 화이트리스트 적용 (on* 이벤트, javascript: 스킴 등 제거)
+    [...node.attributes].forEach(attr => {
+      const name = attr.name.toLowerCase();
+      const value = attr.value || '';
+      const isEventAttr = name.startsWith('on');
+      const isDangerousUrl = /^\s*javascript:/i.test(value) || /^\s*data:text\/html/i.test(value);
+      if(isEventAttr || isDangerousUrl || !ALLOWED_ATTRS.has(name)){
+        node.removeAttribute(attr.name);
+      }
+    });
+
+    // style 안에 expression()/url(javascript:) 같은 것도 제거
+    if(node.hasAttribute('style')){
+      let styleVal = node.getAttribute('style');
+      if(/javascript:|expression\(/i.test(styleVal)){
+        node.removeAttribute('style');
+      }
+    }
+
+    // 자식 노드 재귀 정제 (역순 순회로 remove 안전 처리)
+    [...node.children].reverse().forEach(child => sanitizeNode(child));
+  }
+
+  window.sanitizeLoadedContent = function(html){
+    if(!html) return '';
+    const tmp = document.createElement('div');
+    tmp.innerHTML = html;
+    // script/style/iframe 등은 애초에 innerHTML 파싱 시 태그 자체는 생성되므로
+    // sanitizeNode에서 태그명 화이트리스트로 걸러짐
+    [...tmp.children].forEach(child => sanitizeNode(child));
+    return tmp.innerHTML;
+  };
+
+  // ── 2. onProjectLoaded 오버라이드 ──────────────────
+  const _origOnProjectLoaded = window.onProjectLoaded;
+  window.onProjectLoaded = function(e){
+    const file = e.target.files[0];
+    if(!file) return;
+    const r = new FileReader();
+    r.onload = ev => {
+      try {
+        const data = JSON.parse(ev.target.result);
+
+        // ★ 핵심: 페이지 콘텐츠 전체를 정제 후 적용
+        if(Array.isArray(data.pages)){
+          data.pages = data.pages.map(pg => {
+            if(pg && typeof pg.content === 'string'){
+              pg.content = window.sanitizeLoadedContent(pg.content);
+            }
+            return pg;
+          });
+        }
+
+        Object.assign(S, {
+          format: data.format || 'B5',
+          margins: data.margins || S.margins,
+          master: data.master || S.master,
+          cover: data.cover || S.cover,
+          backCover: data.backCover || S.backCover,
+          endpaper: data.endpaper || S.endpaper,
+          font: data.font || S.font,
+          pages: data.pages || [],
+          projectName: data.projectName || '책',
+          dirty: false
+        });
+
+        coverImageData = S.cover.bgImage || null;
+        document.getElementById('sel-format').value = S.format;
+        if(S.format === '사용자 정의' && data.customSize){
+          FORMATS['사용자 정의'] = { w: data.customSize.w, h: data.customSize.h };
+          document.getElementById('custom-w').value = data.customSize.w;
+          document.getElementById('custom-h').value = data.customSize.h;
+          document.getElementById('custom-size-ui').style.display = 'inline-flex';
+        } else {
+          document.getElementById('custom-size-ui').style.display = 'none';
+        }
+        document.getElementById('sel-font').value = S.font.family;
+        document.getElementById('sel-size').value = S.font.size;
+        document.getElementById('sel-lh').value = S.font.lh;
+        document.getElementById('m-top').value = S.margins.top;
+        document.getElementById('m-bot').value = S.margins.bot;
+        document.getElementById('m-in').value = S.margins.inner;
+        document.getElementById('m-out').value = S.margins.outer;
+        document.getElementById('m-hdr').value = S.margins.hdr;
+        document.getElementById('m-ftr').value = S.margins.ftr;
+
+        renderAll();
+        selectPage(0);
+        updateStatus();
+        notify('프로젝트 불러오기 완료 (보안 검사 적용됨): ' + S.projectName);
+
+        const pni = document.getElementById('project-name-inp');
+        if(pni) pni.value = S.projectName;
+
+      } catch(err){
+        notify('파일을 읽을 수 없습니다: ' + err.message);
+      }
+    };
+    r.readAsText(file);
+    e.target.value = '';
+  };
+
+  console.log('✅ 보안 패치 로드 완료 — .bookpub 파일 불러오기 시 악성 콘텐츠 자동 정제');
+})();
+// [4/4]
+// =====================================================
+// Publoo 패치 추가 — 텍스트 입력에도 되돌리기(Ctrl+Z) 적용
+//
+// 문제: 기존에는 snapshotState()가 페이지 추가/삭제, 표지 적용
+//       같은 "구조 변경"에서만 호출되어, 본문 글자를 입력/삭제
+//       해도 Ctrl+Z로 되돌릴 수 없었음.
+//
+// 해결: onContentChange()를 감싸서, 타이핑이 멈춘 뒤
+//       약 1.2초 후 자동으로 스냅샷을 찍도록 함(디바운스).
+//       → 매 글자마다 찍지 않아 되돌리기가 너무 잘게
+//         쪼개지는 것을 방지하면서도, 문단 단위로는
+//         정상적으로 되돌리기가 동작함.
+//
+// 적용 방법: publoo_patch.js 맨 아래([[1/3]~[3/3] 다음)에
+//           이어 붙이면 됩니다. 전체 합본 파일 사용 중이면
+//           그 파일 맨 아래에 붙이세요.
+// =====================================================
+
+(function(){
+  if(typeof window.onContentChange !== 'function'){
+    console.warn('onContentChange 함수를 찾을 수 없어 텍스트 되돌리기 패치를 건너뜁니다.');
+    return;
+  }
+
+  const _origOnContentChange = window.onContentChange;
+  let debounceTimer = null;
+  const DEBOUNCE_MS = 1200;
+
+  window.onContentChange = function(i){
+    // 기존 동작(자동 페이지 넘김, 썸네일 갱신 등)은 그대로 수행
+    _origOnContentChange(i);
+
+    // 타이핑 멈춘 뒤 일정 시간 후 스냅샷 — 문단 단위로 되돌리기 가능해짐
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      if(typeof window.snapshotState === 'function') window.snapshotState();
+    }, DEBOUNCE_MS);
+  };
+
+  // 포커스가 페이지를 벗어날 때(다른 곳 클릭 등)도 즉시 스냅샷 —
+  // 디바운스 타이머가 아직 안 끝났는데 다른 작업으로 넘어가는 경우 대비
+  document.addEventListener('focusout', (e) => {
+    if(e.target && e.target.classList && e.target.classList.contains('pg-content')){
+      clearTimeout(debounceTimer);
+      if(typeof window.snapshotState === 'function') window.snapshotState();
+    }
+  }, true);
+
+  console.log('✅ 텍스트 입력 되돌리기(Ctrl+Z) 패치 로드 완료 — 타이핑 멈춘 후 자동 스냅샷');
+})();
+// [5/5]
+// =====================================================
+// Publoo 패치 추가 — 되돌리기/다시실행 버튼 위치 개선
+//
+// 문제: ↩ ↪ 버튼이 H1/H2/H3 제목 버튼들 사이에 끼어있어서
+//       무슨 기능인지 알아보기 어려움.
+//
+// 해결: 자바스크립트로 두 버튼을 찾아서, 별도의 독립된
+//       그룹으로 분리하고, 아이콘 옆에 짧은 글자 라벨을
+//       붙여 눈에 띄게 만듦. 위치는 툴바 맨 앞(왼쪽)으로 이동.
+//
+// 적용 방법: publoo_patch.js 맨 아래에 이어 붙이면 됩니다.
+// =====================================================
+
+(function(){
+  function relocateUndoRedo(){
+    const undoBtn = document.getElementById('btn-undo');
+    const redoBtn = document.getElementById('btn-redo');
+    const toolbar = document.getElementById('toolbar');
+    if(!undoBtn || !redoBtn || !toolbar) return false;
+    if(document.getElementById('undo-redo-group')) return true; // 이미 처리됨
+
+    // 라벨 추가 (아이콘만 있던 걸 "↩ 되돌리기" 형태로)
+    undoBtn.innerHTML = '↩ 되돌리기';
+    redoBtn.innerHTML = '↪ 다시실행';
+    undoBtn.style.cssText += ';font-size:11px;padding:4px 9px;white-space:nowrap';
+    redoBtn.style.cssText += ';font-size:11px;padding:4px 9px;white-space:nowrap';
+
+    // 새 그룹 컨테이너 생성 (기존 .tg 스타일 그대로 재사용)
+    const group = document.createElement('div');
+    group.className = 'tg';
+    group.id = 'undo-redo-group';
+    group.appendChild(undoBtn);
+    group.appendChild(redoBtn);
+
+    // 툴바 맨 앞(앱 제목 바로 다음)에 삽입 — 가장 눈에 띄는 위치
+    const appTitle = document.getElementById('app-title');
+    if(appTitle && appTitle.nextSibling){
+      toolbar.insertBefore(group, appTitle.nextSibling);
+    } else {
+      toolbar.insertBefore(group, toolbar.firstChild.nextSibling);
+    }
+    return true;
+  }
+
+  const tryRelocate = () => { try{ relocateUndoRedo(); }catch(e){} };
+  tryRelocate();
+  // DOM이 늦게 그려지는 경우 대비
+  document.addEventListener('DOMContentLoaded', tryRelocate);
+  setTimeout(tryRelocate, 300);
+  setTimeout(tryRelocate, 1000);
+
+  console.log('✅ 되돌리기/다시실행 버튼 위치 개선 패치 로드 완료 — 툴바 맨 앞으로 이동 + 글자 라벨 추가');
+})();
+// [6/6]
+// =====================================================
+// Publoo 패치 추가 — "후기 남기기" 버튼 (구글 폼 연동)
+//
+// 사용법: 아래 GOOGLE_FORM_URL 값을 본인이 만든 구글 폼
+//         URL로 바꿔주세요. (forms.google.com에서 만든 폼의
+//         "보내기 → 링크" 에서 복사한 주소)
+//
+// 적용 방법: publoo_patch.js 맨 아래에 이어 붙이면 됩니다.
+// =====================================================
+
+(function(){
+  // ★★★ 여기를 본인 구글 폼 URL로 교체하세요 ★★★
+  const GOOGLE_FORM_URL = 'https://forms.google.com/YOUR_FORM_LINK_HERE';
+
+  function addFeedbackButton(){
+    if(document.getElementById('btn-feedback')) return true;
+    const toolbar = document.getElementById('toolbar');
+    if(!toolbar) return false;
+
+    // 가장 오른쪽 그룹(AI ✦ 버튼이 있는 .tg:last-child)에 함께 배치
+    const lastGroup = toolbar.querySelector('.tg:last-child');
+    if(!lastGroup) return false;
+
+    const btn = document.createElement('button');
+    btn.id = 'btn-feedback';
+    btn.className = 'tb';
+    btn.style.color = '#7acc7a';
+    btn.title = '사용 후기를 남겨주세요 (구글 폼으로 연결됩니다)';
+    btn.textContent = '💬 후기 남기기';
+    btn.onclick = () => {
+      window.open(GOOGLE_FORM_URL, '_blank', 'noopener,noreferrer');
+      if(window.notify) notify('후기 작성 페이지를 새 탭에서 열었어요. 소중한 의견 감사합니다!');
+    };
+
+    // AI 버튼 앞에 삽입 (그룹 맨 끝은 AI 버튼으로 유지)
+    lastGroup.insertBefore(btn, lastGroup.lastElementChild);
+    return true;
+  }
+
+  const tryAdd = () => { try{ addFeedbackButton(); }catch(e){} };
+  tryAdd();
+  document.addEventListener('DOMContentLoaded', tryAdd);
+  setTimeout(tryAdd, 300);
+  setTimeout(tryAdd, 1000);
+
+  console.log('✅ 후기 남기기 버튼 패치 로드 완료 — GOOGLE_FORM_URL 값을 실제 폼 링크로 바꿔주세요');
+})();
